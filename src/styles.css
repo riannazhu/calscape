@@ -1,0 +1,281 @@
+:root {
+  --frame: #0e1116;
+  --panel: rgba(16, 20, 34, 0.78);
+  --panel-edge: #e9e2cf;
+  --panel-shadow: rgba(0, 0, 0, 0.45);
+  --ink: #f1ead6;
+  --ink-dim: #8d90a3;
+  --accent: #f2c66d;
+  --block-off: #3d4358;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: var(--frame);
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Silkscreen', ui-monospace, monospace;
+  color: var(--ink);
+  -webkit-font-smoothing: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.app {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.stage {
+  position: relative;
+  overflow: hidden;
+}
+
+.scene {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  touch-action: manipulation;
+}
+
+.pixel-art {
+  display: block;
+}
+
+/* Chrome: everything that fades out while studying. */
+.chrome,
+.element-bar {
+  transition: opacity 1.2s ease;
+}
+
+.app.idle .chrome {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.app.idle,
+.app.idle .scene {
+  cursor: none !important;
+}
+
+.corner {
+  position: absolute;
+  top: calc(var(--u) * 4);
+  font-size: calc(var(--u) * 4);
+  line-height: 1;
+  letter-spacing: calc(var(--u) * 0.25);
+  color: var(--ink);
+  text-shadow: var(--u) var(--u) 0 var(--panel-shadow);
+  pointer-events: none;
+}
+
+.top-left {
+  left: calc(var(--u) * 5);
+}
+
+.top-right {
+  right: calc(var(--u) * 5);
+}
+
+.app.day .corner {
+  color: #1d2738;
+  text-shadow: var(--u) var(--u) 0 rgba(255, 255, 255, 0.35);
+}
+
+/* Pixel panels and tiles. */
+.panel {
+  background: var(--panel);
+  border: var(--u) solid var(--panel-edge);
+  box-shadow:
+    inset var(--u) var(--u) 0 rgba(255, 255, 255, 0.08),
+    var(--u) var(--u) 0 var(--panel-shadow);
+  padding: calc(var(--u) * 2);
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+}
+
+.tile {
+  appearance: none;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  width: calc(var(--u) * 16);
+  height: calc(var(--u) * 16);
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.04);
+  border: var(--u) solid var(--ink-dim);
+  cursor: pointer;
+  position: relative;
+}
+
+.tile:hover {
+  border-color: var(--ink);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.tile:active {
+  transform: translateY(var(--u));
+}
+
+.tile.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tile[aria-disabled='true'] {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.tile:focus-visible,
+.blocks:focus-visible {
+  outline: var(--u) solid var(--accent);
+  outline-offset: var(--u);
+}
+
+.tile.small {
+  width: calc(var(--u) * 11);
+  height: calc(var(--u) * 11);
+}
+
+.inventory.present {
+  border-color: var(--accent);
+  background: rgba(242, 198, 109, 0.12);
+}
+
+.inventory.present::after {
+  content: '';
+  position: absolute;
+  top: var(--u);
+  right: var(--u);
+  width: calc(var(--u) * 2);
+  height: calc(var(--u) * 2);
+  background: var(--accent);
+}
+
+.bottom-left,
+.bottom-center,
+.bottom-right {
+  position: absolute;
+  bottom: calc(var(--u) * 4);
+}
+
+.bottom-left {
+  left: calc(var(--u) * 4);
+}
+
+.bottom-center {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.bottom-right {
+  right: calc(var(--u) * 4);
+  display: flex;
+  align-items: stretch;
+  gap: calc(var(--u) * 2);
+}
+
+.bottom-right > .tile {
+  height: auto;
+  min-height: calc(var(--u) * 16);
+  background: var(--panel);
+  border-color: var(--panel-edge);
+  box-shadow: var(--u) var(--u) 0 var(--panel-shadow);
+}
+
+/* Volume blocks, shared by master volume and element bars. */
+.blocks {
+  display: flex;
+  align-items: center;
+  gap: var(--u);
+  padding: var(--u);
+  touch-action: none;
+}
+
+.block {
+  width: calc(var(--u) * 2);
+  height: calc(var(--u) * 6);
+  background: var(--block-off);
+  cursor: pointer;
+}
+
+.block.on {
+  background: var(--accent);
+}
+
+.master {
+  padding: calc(var(--u) * 2) calc(var(--u) * 3);
+}
+
+.master-icon {
+  color: var(--ink);
+}
+
+.master-blocks {
+  cursor: pointer;
+}
+
+.master-blocks .block {
+  height: calc(var(--u) * 8);
+}
+
+/* Anchored element controls. */
+.element-bar {
+  position: absolute;
+  gap: var(--u);
+  padding: var(--u);
+  z-index: 2;
+}
+
+.element-bar.muted .block.on {
+  background: var(--ink-dim);
+}
+
+.element-bar.muted .tile:first-child {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.element-bar .remove:hover {
+  color: #f0a08a;
+  border-color: #f0a08a;
+}
+
+/* Invisible keyboard targets over each sprite; the canvas draws the outline. */
+.sprite-target {
+  position: absolute;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  pointer-events: none;
+  outline: none;
+}
