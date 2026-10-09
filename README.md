@@ -29,19 +29,19 @@ npm run build    # static build in dist/, no backend needed
 - Controls fade out after five seconds of inactivity; move the pointer or press
   a key to bring them back.
 
-The Campanile chimes once when added, then tolls the hour at the top of each
-hour from 8 am to 10 pm Berkeley time (America/Los_Angeles), like the real
-hour strike.
+The Campanile chimes once when added, then tolls the hour on your computer's
+clock at the top of every hour: once at 1 o'clock, twice at 2, up to twelve
+times at noon and midnight, with strikes 4 seconds apart.
 
 ## Sounds
 
 Rain and bird chirps are synthesised in the browser by `src/audio/engine.ts`.
 
-The bell is a recording of the Campanile tolling, `public/sounds/campanile.mp3`,
-with background noise reduced. The engine plays one strike at a time from it
-(the start times are listed in `BELL_STRIKES`), rotating through the cleanly
-attacked strikes. If the file fails to load, a synthesised bell tuned to the
-Great Bear Bell's low G plays instead.
+The bell, `public/sounds/campanile.mp3`, is a single strike isolated from a
+recording of the Campanile: only the bell's partials are kept, so traffic and
+footsteps are removed, and the ring-out is extended from the partials' own
+decay. If the file fails to load, a synthesised bell tuned to the Great Bear
+Bell's low G plays instead.
 
 ## Layout
 

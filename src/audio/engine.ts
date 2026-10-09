@@ -2,18 +2,10 @@ import type { ElementId, ElementState } from '../elements';
 
 const FADE = 0.06;
 const STOP_FADE = 0.12;
-const BERKELEY_TZ = 'America/Los_Angeles';
-/** Recording of the Campanile tolling; the synthesised bell is used if it fails to load. */
+/** One isolated Campanile strike; the synthesised bell is used if it fails to load. */
 const BELL_SAMPLE_URL = `${import.meta.env.BASE_URL}sounds/campanile.mp3`;
-/** Start times (s) of the cleanly attacked strikes in campanile.mp3, each ringing ~4 s. */
-const BELL_STRIKES = [3.88, 7.86, 11.78];
-const STRIKE_LENGTH = 3.95;
-const STRIKE_FADE = 1.2;
 /** The tower tolls the hour with strikes about 4 s apart. */
 const STRIKE_SPACING = 4;
-/** Hour strikes sound from 8 am to 10 pm. */
-const FIRST_HOUR = 8;
-const LAST_HOUR = 22;
 
 /** Keeps the default mix modest: rain as a bed, bird and bell as accents. */
 const BASE_LEVEL: Record<ElementId, number> = { rain: 0.55, bird: 0.22, bell: 0.4 };
@@ -108,24 +100,16 @@ function normalize(out: Float32Array, to = 1) {
   if (peak) for (let i = 0; i < out.length; i++) out[i] = (out[i] / peak) * to;
 }
 
-function berkeleyHour(date: Date): number {
-  return Number(
-    new Intl.DateTimeFormat('en-US', { hour: 'numeric', hourCycle: 'h23', timeZone: BERKELEY_TZ })
-      .formatToParts(date)
-      .find((p) => p.type === 'hour')?.value ?? 0,
-  );
+/** The next top of the hour on the user's clock, strictly after `after` (ms). */
+function nextHour(after: number): Date {
+  const d = new Date(after);
+  d.setMinutes(60, 0, 0);
+  return d;
 }
 
-/** Milliseconds until the next top of the hour in Berkeley time. */
-function msUntilNextHour(now: Date): number {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    minute: 'numeric',
-    second: 'numeric',
-    timeZone: BERKELEY_TZ,
-  }).formatToParts(now);
-  const min = Number(parts.find((p) => p.type === 'minute')?.value ?? 0);
-  const sec = Number(parts.find((p) => p.type === 'second')?.value ?? 0);
-  return ((59 - min) * 60 + (60 - sec)) * 1000 - now.getMilliseconds();
+/** Strikes for an hour on a 12-hour clock: 1 pm rings once, midnight and noon twelve times. */
+export function strikesFor(hour24: number): number {
+  return hour24 % 12 === 0 ? 12 : hour24 % 12;
 }
 
 /** Tracks scheduled sources so a channel can stop everything it started. */
@@ -161,7 +145,6 @@ export class AudioEngine {
   private previews = new Map<ElementId, () => void>();
   private rainBuffers: { hiss: AudioBuffer; drops: AudioBuffer } | null = null;
   private bellSample: AudioBuffer | null = null;
-  private nextStrike = 0;
   onChirp: ((ms: number) => void) | null = null;
 
   /** Must be called from a user gesture before audio can play. */
@@ -399,18 +382,12 @@ export class AudioEngine {
   /** One bell strike at `at`; returns how long it rings, in seconds. */
   private strike(ctx: AudioContext, dest: AudioNode, at: number, sources: SourceSet): number {
     if (this.bellSample) {
-      // Rotate through the recorded strikes so repeated tolls vary naturally.
-      const offset = BELL_STRIKES[this.nextStrike++ % BELL_STRIKES.length];
       const src = ctx.createBufferSource();
       src.buffer = this.bellSample;
-      const env = ctx.createGain();
-      env.gain.setValueAtTime(1, at + STRIKE_LENGTH - STRIKE_FADE);
-      env.gain.linearRampToValueAtTime(0, at + STRIKE_LENGTH);
-      src.connect(env).connect(dest);
-      src.start(at, offset, STRIKE_LENGTH);
-      src.addEventListener('ended', () => env.disconnect());
+      src.connect(dest);
+      src.start(at);
       sources.add(src);
-      return STRIKE_LENGTH;
+      return this.bellSample.duration;
     }
     return this.synthStrike(ctx, dest, at, sources);
   }
@@ -486,25 +463,25 @@ export class AudioEngine {
     const sources = new SourceSet();
     let timer = 0;
 
-    const scheduleHour = () => {
-      // Look 2 s ahead so a timer that fires slightly early cannot ring the same hour twice.
-      const wait = msUntilNextHour(new Date(Date.now() + 2000)) + 2000;
-      const due = Date.now() + wait;
+    const scheduleHour = (after: number) => {
+      const due = nextHour(after);
       timer = window.setTimeout(() => {
         // Skip a ring that was delayed far past the hour, e.g. after sleep.
-        const hour = berkeleyHour(new Date(due + 30_000));
-        if (Date.now() - due < 60_000 && hour >= FIRST_HOUR && hour <= LAST_HOUR) {
-          const n = hour % 12 === 0 ? 12 : hour % 12;
+        const late = Date.now() - due.getTime();
+        if (late < 60_000) {
+          const n = strikesFor(due.getHours());
           for (let i = 0; i < n; i++) {
             this.strike(ctx, gain, ctx.currentTime + 0.05 + i * STRIKE_SPACING, sources);
           }
         }
-        scheduleHour();
-      }, wait);
+        // Count from the hour just handled, so a timer that fires early can't repeat it
+        // and one that fires very late (after sleep) catches up to the current hour.
+        scheduleHour(Math.max(due.getTime(), Date.now()));
+      }, Math.max(0, due.getTime() - Date.now()));
     };
 
     this.strike(ctx, gain, ctx.currentTime + 0.15, sources);
-    scheduleHour();
+    scheduleHour(Date.now());
 
     return {
       gain,
