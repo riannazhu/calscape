@@ -10,6 +10,7 @@ import {
   DEER_GRAZE,
   DEER_WALK,
   RAIN_CLOUDS,
+  SUNSET_WISPS,
   WISPS,
   drawSprite,
   flipX,
@@ -59,6 +60,10 @@ interface Deer {
   walking: boolean;
   since: number;
   until: number;
+  /** How long this pause starts with the head up. */
+  lookup: number;
+  /** Offsets the walk cycle so no two deer step in time. */
+  phase: number;
 }
 
 const DEER_FRAMES = {
@@ -66,10 +71,10 @@ const DEER_FRAMES = {
   graze: [DEER_GRAZE, flipX(DEER_GRAZE)],
 };
 /** One star in this many twinkles, now and then. */
-const TWINKLE_EVERY = 4;
+const TWINKLE_EVERY = 2;
 const DEER_SPEED = 2.5;
-/** Grazing deer lift their heads for this long before dipping back down. */
-const DEER_LOOKUP_MS = 1800;
+/** Sunset streaks drift this many times faster than day and night clouds. */
+const SUNSET_DRIFT = 3;
 
 interface Layers {
   far: HTMLCanvasElement;
@@ -119,9 +124,9 @@ export class World {
   private placedCache: Placed[] = [];
   /** Deer wander the Glade at night, each within its own stretch of lawn. */
   private deer: Deer[] = [
-    { x: 40, y: 147, min: 12, max: 150, dir: 1, walking: true, since: 0, until: 0 },
-    { x: 130, y: 153, min: 60, max: 210, dir: -1, walking: true, since: 0, until: 0 },
-    { x: 268, y: 149, min: 180, max: 300, dir: -1, walking: true, since: 0, until: 0 },
+    { x: 40, y: 147, min: 12, max: 150, dir: 1, walking: false, since: -1e5, until: 0, lookup: 0, phase: 0 },
+    { x: 130, y: 153, min: 60, max: 210, dir: -1, walking: false, since: -1e5, until: 0, lookup: 0, phase: 0 },
+    { x: 268, y: 149, min: 180, max: 300, dir: -1, walking: false, since: -1e5, until: 0, lookup: 0, phase: 0 },
   ];
   private lastDeer = 0;
 
@@ -271,16 +276,18 @@ export class World {
 
     if (night && !this.reducedMotion) {
       STARS.forEach((s, i) => {
-        if (i % TWINKLE_EVERY === 0 && Math.sin(t * 0.3 + i * 1.7) > 0.99) {
+        if (i % TWINKLE_EVERY === 0 && Math.sin(t * 0.35 + i * 1.7) > 0.98) {
           ctx.fillStyle = hex(skyColor('night', pal, s.x, s.y));
           ctx.fillRect(s.x, s.y, 1, 1);
         }
       });
     }
 
-    if (this.time !== 'day') for (const w of WISPS) {
+    const sunset = this.time === 'sunset';
+    const wisps = sunset ? [...WISPS, ...SUNSET_WISPS] : night ? WISPS : [];
+    for (const w of wisps) {
       const span = W + w.sprite.w + 40;
-      const x = Math.floor(((w.x0 + t * w.speed) % span) - w.sprite.w);
+      const x = Math.floor(((w.x0 + t * w.speed * (sunset ? SUNSET_DRIFT : 1)) % span) - w.sprite.w);
       drawSprite(ctx, w.sprite, x, w.y, pal);
     }
 
@@ -343,11 +350,17 @@ export class World {
     const dt = this.lastDeer ? Math.min(0.1, (now - this.lastDeer) / 1000) : 0;
     this.lastDeer = now;
     for (const d of this.deer) {
+      if (d.until === 0) {
+        // Each deer starts partway through its own grazing spell.
+        d.until = now + 2000 + this.rng() * 20000;
+        d.phase = this.rng() * 1000;
+      }
       if (!this.reducedMotion) {
         if (now > d.until) {
           d.walking = !d.walking;
           d.since = now;
-          d.until = now + (d.walking ? 2500 + this.rng() * 2500 : 15000 + this.rng() * 20000);
+          d.until = now + (d.walking ? 2000 + this.rng() * 3500 : 12000 + this.rng() * 26000);
+          d.lookup = this.rng() < 0.6 ? 800 + this.rng() * 2600 : 0;
           if (d.walking && this.rng() < 0.4) d.dir = d.dir === 1 ? -1 : 1;
         }
         if (d.walking) {
@@ -361,8 +374,8 @@ export class World {
       const facing = d.dir === 1 ? 0 : 1;
       const walk = DEER_FRAMES.walk[facing];
       let sprite = DEER_FRAMES.graze[facing];
-      if (d.walking && !this.reducedMotion) sprite = walk[Math.floor(now / 280) % 2];
-      else if (now - d.since < DEER_LOOKUP_MS) sprite = walk[0];
+      if (d.walking && !this.reducedMotion) sprite = walk[Math.floor((now + d.phase) / 280) % 2];
+      else if (now - d.since < d.lookup) sprite = walk[0];
       drawSprite(ctx, sprite, Math.round(d.x - sprite.w / 2), d.y - sprite.h + 1, pal);
     }
   }

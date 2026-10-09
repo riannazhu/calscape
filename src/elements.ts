@@ -20,7 +20,7 @@ export interface ElementDef {
 export const ELEMENTS: ElementDef[] = [
   { id: 'bell', name: 'Campanile bell', bar: { x: 116, y: 36, place: 'right' } },
   { id: 'rain', name: 'Rain', bar: { x: 141, y: 30, place: 'below' } },
-  { id: 'bird', name: 'Bird', bar: { x: 32, y: 40, place: 'right' } },
+  { id: 'bird', name: 'Bird', bar: { x: 34, y: 40, place: 'right' } },
 ];
 
 export const ELEMENT_BY_ID = Object.fromEntries(ELEMENTS.map((e) => [e.id, e])) as Record<

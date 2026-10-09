@@ -125,6 +125,15 @@ export const WISPS: { sprite: Sprite; y: number; x0: number; speed: number }[] =
   { sprite: wisp(36, [[0.35, 0.6], [0.1, 0.9], [0, 1], [0.2, 0.75]]), y: 93, x0: 40, speed: 1 / 13 },
 ];
 
+/** Extra streaks that only gather at sunset. */
+export const SUNSET_WISPS: typeof WISPS = [
+  { sprite: wisp(30, [[0.3, 0.65], [0.05, 0.9], [0.15, 1]]), y: 32, x0: 200, speed: 1 / 9 },
+  { sprite: wisp(44, [[0.2, 0.5], [0, 0.8], [0.05, 1], [0.3, 0.85]]), y: 64, x0: 20, speed: 1 / 11 },
+  { sprite: wisp(24, [[0.3, 0.7], [0, 1], [0.25, 0.8]]), y: 80, x0: 240, speed: 1 / 10 },
+  { sprite: wisp(32, [[0.4, 0.7], [0.1, 0.95], [0, 1]]), y: 47, x0: 330, speed: 1 / 12 },
+  { sprite: wisp(50, [[0.25, 0.6], [0.05, 0.85], [0, 1], [0.2, 0.9]]), y: 106, x0: 300, speed: 1 / 15 },
+];
+
 /**
  * Sather Tower, front face: gold finial and lantern, pyramidal copper spire,
  * belfry with three arched openings, clock stage and a long granite shaft.

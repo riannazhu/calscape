@@ -201,7 +201,7 @@ export const DAY: Palette = {
   pine: '#3b6e4c',
   pineDark: '#2b573e',
   lampPost: '#3a3a50',
-  lampGlass: '#fff2c8',
+  lampGlass: '#c4ccd8',
   lampGlow: '#ffe09a',
   campLight: '#f7f2f0',
   campMid: '#dcd4dc',

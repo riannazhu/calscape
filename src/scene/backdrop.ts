@@ -1,5 +1,5 @@
 import type { Palette, PaletteKey, TimeOfDay } from './palette';
-import { drawBlanket, drawNet, drawTowel, peopleFor, stamp } from './people';
+import { drawBlanket, drawNet, peopleFor, stamp } from './people';
 import { Painter, hash, mix, mulberry32, noise, rgb, type RGB } from './pixels';
 
 export const W = 320;
@@ -13,7 +13,7 @@ export const SUN: Record<'day' | 'sunset', { x: number; y: number; r: number }> 
 export const MOON = { x: 252, y: 24 };
 
 /** The bird perches on the top-left branch with its feet on this row. */
-export const PERCH = { x: 19, feetY: 45 };
+export const PERCH = { x: 21, feetY: 45 };
 
 /** Top row of the lawn: a gentle rise that crests in front of Doe. */
 export const lawnTop = (x: number) => Math.round(131 + 12 * ((x - 175) / 175) ** 2);
@@ -43,11 +43,14 @@ function skyField(time: TimeOfDay, x: number, y: number) {
   return clamp01(0.4 * v + 0.6 * (1 - Math.hypot(x - sun.x, (y - sun.y) * 1.5) / 300));
 }
 
-/** Stepped rings of moonlight; the sun has no halo. */
-const MOON_GLOWS = [
-  { r: 40, a: 0.35, steps: 4 },
-  { r: 14, a: 0.45, steps: 2 },
-];
+/** Stepped rings of light: a soft wash around the moon, a faint rim on the midday sun. */
+const SKY_GLOWS: Partial<Record<TimeOfDay, { x: number; y: number; r: number; a: number; steps: number }[]>> = {
+  night: [
+    { x: MOON.x, y: MOON.y, r: 40, a: 0.35, steps: 4 },
+    { x: MOON.x, y: MOON.y, r: 14, a: 0.45, steps: 2 },
+  ],
+  day: [{ x: SUN.day.x, y: SUN.day.y, r: 13, a: 0.3, steps: 2 }],
+};
 
 /** Fade for a stepped glow ring at normalised distance `d` (0 centre, 1 edge). */
 function glowAt(d: number, steps: number) {
@@ -72,10 +75,8 @@ export function skyColor(time: TimeOfDay, pal: Palette, x: number, y: number): R
   const at = q * (ramp.length - 1);
   const i = Math.min(ramp.length - 2, Math.floor(at));
   let c = mix(rgb(pal[ramp[i]]), rgb(pal[ramp[i + 1]]), at - i);
-  if (time === 'night') {
-    for (const g of MOON_GLOWS) {
-      c = mix(c, rgb(pal.glow), g.a * glowAt(Math.hypot(cx - MOON.x, cy - MOON.y) / g.r, g.steps));
-    }
+  for (const g of SKY_GLOWS[time] ?? []) {
+    c = mix(c, rgb(pal.glow), g.a * glowAt(Math.hypot(cx - g.x, cy - g.y) / g.r, g.steps));
   }
   return c;
 }
@@ -87,10 +88,10 @@ type Clump = [x: number, y: number, r: number];
  * Campanile's spire keeps clear sky around it.
  */
 const CANOPY: Record<'leftBack' | 'left' | 'rightBack' | 'right', Clump[]> = {
-  leftBack: [[6, 2, 17], [32, -2, 15], [56, 0, 11], [-6, 26, 11], [20, 28, 9], [46, 22, 9], [64, 18, 7]],
+  leftBack: [[12, -2, 12], [42, -4, 10], [56, 30, 8], [-6, 46, 9]],
   left: [
-    [8, 10, 14], [28, 10, 12], [50, 10, 12], [68, 4, 10], [16, -2, 11], [40, 26, 8], [30, 28, 6],
-    [58, 26, 7], [-2, 38, 10], [2, 56, 8], [78, 24, 7], [69, 50, 7],
+    [32, 4, 10], [52, 6, 9], [68, 2, 7], [52, 26, 7], [-4, 30, 8], [-2, 62, 7],
+    [44, 52, 8], [62, 46, 8], [77, 39, 7], [33, 56, 6],
   ],
   rightBack: [[318, 2, 15], [298, -4, 11], [306, 24, 8]],
   right: [[316, 10, 13], [294, 12, 10], [280, 22, 8], [324, 34, 9], [320, 56, 7]],
@@ -165,7 +166,7 @@ function branch(p: Painter, pts: [number, number][], from: number, to: number) {
   }
 }
 
-const LIT_SHARE: Record<TimeOfDay, number> = { day: 0.12, sunset: 0.3, night: 0.65 };
+const LIT_SHARE: Record<TimeOfDay, number> = { day: 0, sunset: 0.3, night: 1 };
 
 function lit(seed: number, time: TimeOfDay) {
   return hash(seed, 3, 77) < LIT_SHARE[time];
@@ -319,7 +320,7 @@ function doe(p: Painter, time: TimeOfDay) {
   }
 
   // Central bay: window between two small columns, then the entrance portal.
-  arched(220, 227, 90, 105, true);
+  arched(220, 227, 90, 105, time !== 'day');
   for (const x of [217, 229]) {
     for (let y = 90; y < 106; y++) {
       p.set(x, y, 'stoneLight');
@@ -489,10 +490,7 @@ export function drawMid(pal: Palette, time: TimeOfDay) {
   lawn(p);
   path(p);
   if (time !== 'night') drawBlanket(p);
-  if (time === 'day') {
-    drawNet(p);
-    drawTowel(p);
-  }
+  if (time === 'day') drawNet(p);
   for (const person of peopleFor(time)) stamp(p, person);
   return p.toCanvas();
 }
@@ -503,14 +501,13 @@ export function drawFg(pal: Palette) {
   const clumps = (list: Clump[], seed: number, shade = 0) =>
     list.forEach(([x, y, r], i) => blob(p, x, y, r, seed + i, shade));
 
-  // Left tree: a limb rising from low on the left edge (the bird perches on it),
-  // a second branch behind the leaves, and round clumps on the branch ends.
+  // Left tree: a thick trunk rising up and to the right, a sturdy branch the
+  // bird sits on in open sky, leaves hanging below it and a light crown above.
   clumps(CANOPY.leftBack, 300, -0.35);
-  branch(p, [[0, 40], [12, 28], [26, 16], [40, 6], [50, -2]], 4, 2);
-  branch(p, [[-6, 74], [4, 62], [14, 52], [24, 46], [40, 40], [54, 36], [66, 34]], 8, 2);
-  branch(p, [[40, 40], [44, 26], [52, 14]], 3, 2);
-  branch(p, [[54, 36], [62, 42], [68, 48]], 2, 1);
-  branch(p, [[66, 34], [72, 30], [77, 27]], 2, 1);
+  branch(p, [[-8, 86], [2, 66], [10, 46], [18, 26], [26, 6], [30, -6]], 11, 7);
+  branch(p, [[8, 52], [18, 48], [32, 47], [48, 43], [64, 39], [78, 36]], 7, 4);
+  branch(p, [[20, 22], [36, 16], [52, 10], [66, 4]], 5, 3);
+  branch(p, [[48, 43], [52, 34], [54, 26]], 4, 3);
   clumps(CANOPY.left, 100);
 
   // Right tree: the same build, mirrored and a little smaller.

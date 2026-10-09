@@ -14,6 +14,39 @@ export const SUN = [
   '.....#.....',
 ];
 
+/** Cal bear head for the CalScape label. */
+export const BEAR = fromRows(
+  [
+    '.BB....BB.',
+    'BLBBBBBBLB',
+    '.BBBBBBBB.',
+    '.BDBBBBDB.',
+    '.BBBLLBBB.',
+    '.BBLDDLBB.',
+    '..BLLLLB..',
+    '...BBBB...',
+  ],
+  { B: 'deer', L: 'deerLight', D: 'eye' },
+);
+
+/** Little pine for the scene label. */
+export const PINE = fromRows(
+  [
+    '....P....',
+    '...PPp...',
+    '..LPPpp..',
+    '...PPp...',
+    '..LPPPp..',
+    '.LLPPPpp.',
+    '..LPPPp..',
+    '.LPPPPPp.',
+    'LLPPPPPpp',
+    '....T....',
+    '....T....',
+  ],
+  { L: 'pineLight', P: 'pine', p: 'pineDark', T: 'trunk' },
+);
+
 export const SUNSET = [
   '.....#.....',
   '.#...#...#.',

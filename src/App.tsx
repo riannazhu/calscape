@@ -7,6 +7,8 @@ import { World } from './scene/world';
 import { initialState, reducer } from './state';
 import { BottomControls } from './ui/BottomControls';
 import { ElementBar } from './ui/ElementBar';
+import { BEAR, PINE } from './ui/icons';
+import { SpriteArt } from './ui/PixelArt';
 import { useIdle } from './ui/useIdle';
 import { useStageScale } from './ui/useStageScale';
 
@@ -245,10 +247,22 @@ export function App() {
         )}
       </div>
 
-      <div className="chrome panel corner top-left">CalScape</div>
-      <div className="chrome panel corner top-right">Glade</div>
+      {/* The part of the scene inside the window: chrome hugs its corners. */}
+      <div
+        className="frame"
+        style={{ width: `min(100%, ${W * scale}px)`, height: `min(100%, ${H * scale}px)` }}
+      >
+        <div className="chrome panel corner top-left">
+          <SpriteArt sprite={BEAR} />
+          <span className="brand">CalScape</span>
+        </div>
+        <div className="chrome panel corner top-right">
+          <span>Glade</span>
+          <SpriteArt sprite={PINE} />
+        </div>
 
-      <BottomControls state={state} dispatch={dispatch} />
+        <BottomControls state={state} dispatch={dispatch} />
+      </div>
     </div>
   );
 }
