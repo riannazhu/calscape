@@ -1,7 +1,5 @@
 # CalScape product requirements document
 
-The figures referenced below are in the original PDF: [`calscape_spec.pdf`](./calscape_spec.pdf).
-
 ## 1. Objective
 
 Music is too distracting to study with. I want CalScape to play on the TV as a calm background and ambient sound while I study. Keep this purpose central to every design and implementation decision: the scene, sounds, and controls should support sustained concentration.
