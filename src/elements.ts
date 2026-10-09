@@ -18,9 +18,9 @@ export interface ElementDef {
 
 /** Bottom of the stack first; hit-testing walks this list in reverse. */
 export const ELEMENTS: ElementDef[] = [
-  { id: 'bell', name: 'Campanile bell', bar: { x: 94, y: 20, place: 'right' } },
-  { id: 'rain', name: 'Rain cloud', bar: { x: 160, y: 36, place: 'below' } },
-  { id: 'bird', name: 'Bird', bar: { x: 237, y: 84, place: 'above' } },
+  { id: 'bell', name: 'Campanile bell', bar: { x: 116, y: 36, place: 'right' } },
+  { id: 'rain', name: 'Rain', bar: { x: 141, y: 30, place: 'below' } },
+  { id: 'bird', name: 'Bird', bar: { x: 32, y: 40, place: 'right' } },
 ];
 
 export const ELEMENT_BY_ID = Object.fromEntries(ELEMENTS.map((e) => [e.id, e])) as Record<

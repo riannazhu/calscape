@@ -10,6 +10,8 @@ export interface AppState {
   night: boolean;
   /** 0..1, multiplies every element gain. */
   master: number;
+  /** Silences the whole scene while keeping `master`. */
+  masterMuted: boolean;
 }
 
 export type Action =
@@ -18,7 +20,8 @@ export type Action =
   | { type: 'toggleMute'; id: ElementId }
   | { type: 'setVolume'; id: ElementId; volume: number }
   | { type: 'setNight'; night: boolean }
-  | { type: 'setMaster'; master: number };
+  | { type: 'setMaster'; master: number }
+  | { type: 'toggleMasterMute' };
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
@@ -30,6 +33,7 @@ export function initialState(): AppState {
     elements: { rain: absent(), bird: absent(), bell: absent() },
     night: hour < 7 || hour >= 19,
     master: DEFAULT_MASTER,
+    masterMuted: false,
   };
 }
 
@@ -51,5 +55,7 @@ export function reducer(s: AppState, a: Action): AppState {
       return { ...s, night: a.night };
     case 'setMaster':
       return { ...s, master: clamp01(a.master) };
+    case 'toggleMasterMute':
+      return { ...s, masterMuted: !s.masterMuted };
   }
 }

@@ -1,28 +1,28 @@
 import { useEffect, useRef, useState, type Dispatch } from 'react';
-import { ELEMENT_BY_ID, INVENTORY, MASTER_STEPS, type ElementId } from '../elements';
+import { ELEMENT_BY_ID, INVENTORY, MASTER_STEPS } from '../elements';
 import { BIRD_IDLE } from '../scene/sprites';
 import type { Action, AppState } from '../state';
 import { Icon, SpriteArt } from './PixelArt';
 import {
   ADD,
-  CAMPANILE_TILE,
+  BELL_TILE,
   CLOUD_TILE,
   EXIT_FULLSCREEN,
   FULLSCREEN,
   MOON,
   SPEAKER,
+  SPEAKER_MUTED,
   SUN,
 } from './icons';
 
-const TILE_ART = { rain: CLOUD_TILE, bird: BIRD_IDLE, bell: CAMPANILE_TILE };
+const TILE_ART = { rain: CLOUD_TILE, bird: BIRD_IDLE, bell: BELL_TILE };
 
 interface Props {
   state: AppState;
   dispatch: Dispatch<Action>;
-  onOpen(id: ElementId): void;
 }
 
-export function BottomControls({ state, dispatch, onOpen }: Props) {
+export function BottomControls({ state, dispatch }: Props) {
   const nextAbsent = INVENTORY.find((id) => !state.elements[id].present);
 
   return (
@@ -54,8 +54,9 @@ export function BottomControls({ state, dispatch, onOpen }: Props) {
             <button
               key={id}
               className={`tile inventory ${present ? 'present' : ''}`}
-              aria-label={present ? `${name}, in the scene. Open controls` : `Add ${name}`}
-              onClick={() => (present ? onOpen(id) : dispatch({ type: 'add', id }))}
+              aria-label={present ? `Remove ${name}` : `Add ${name}`}
+              aria-pressed={present}
+              onClick={() => dispatch({ type: present ? 'remove' : 'add', id })}
             >
               <SpriteArt sprite={TILE_ART[id]} />
             </button>
@@ -72,14 +73,26 @@ export function BottomControls({ state, dispatch, onOpen }: Props) {
       </div>
 
       <div className="chrome bottom-right">
-        <MasterVolume value={state.master} onChange={(master) => dispatch({ type: 'setMaster', master })} />
+        <MasterVolume
+          value={state.master}
+          muted={state.masterMuted}
+          onChange={(master) => dispatch({ type: 'setMaster', master })}
+          onToggleMute={() => dispatch({ type: 'toggleMasterMute' })}
+        />
         <FullscreenTile />
       </div>
     </>
   );
 }
 
-function MasterVolume({ value, onChange }: { value: number; onChange(v: number): void }) {
+interface MasterVolumeProps {
+  value: number;
+  muted: boolean;
+  onChange(v: number): void;
+  onToggleMute(): void;
+}
+
+function MasterVolume({ value, muted, onChange, onToggleMute }: MasterVolumeProps) {
   const ref = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
 
@@ -106,10 +119,15 @@ function MasterVolume({ value, onChange }: { value: number; onChange(v: number):
   };
 
   return (
-    <div className="panel master">
-      <span className="master-icon">
-        <Icon rows={SPEAKER} />
-      </span>
+    <div className={`panel master ${muted ? 'muted' : ''}`}>
+      <button
+        className="master-mute"
+        aria-label={muted ? 'Unmute all sound' : 'Mute all sound'}
+        aria-pressed={muted}
+        onClick={onToggleMute}
+      >
+        <Icon rows={muted ? SPEAKER_MUTED : SPEAKER} />
+      </button>
       <div
         ref={ref}
         className="blocks master-blocks"
@@ -119,7 +137,7 @@ function MasterVolume({ value, onChange }: { value: number; onChange(v: number):
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(value * 100)}
-        aria-valuetext={`${Math.round(value * 100)}%`}
+        aria-valuetext={`${Math.round(value * 100)}%${muted ? ', muted' : ''}`}
         onKeyDown={onKeyDown}
         onPointerDown={(e) => {
           dragging.current = true;

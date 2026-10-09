@@ -2,6 +2,7 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { AudioEngine } from './audio/engine';
 import { ELEMENTS, ELEMENT_BY_ID, type ElementId } from './elements';
 import { H, W } from './scene/backdrop';
+import { DAY, NIGHT } from './scene/palette';
 import { World } from './scene/world';
 import { initialState, reducer } from './state';
 import { BottomControls } from './ui/BottomControls';
@@ -11,6 +12,8 @@ import { useStageScale } from './ui/useStageScale';
 
 const HOVER_GRACE_MS = 450;
 const FRAME_MS = 50;
+/** Interface pixels are sized as if the scene were 320 pixels wide, whatever its resolution. */
+const UI_PIXEL = W / 320;
 
 export function App() {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
@@ -23,7 +26,9 @@ export function App() {
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const spriteTargets = useRef<Partial<Record<ElementId, HTMLButtonElement | null>>>({});
-  const scale = useStageScale(W, H);
+  const { scale, fit } = useStageScale(W, H);
+  const dpr = window.devicePixelRatio || 1;
+  const uiUnit = Math.max(1, Math.round(fit * UI_PIXEL * dpr)) / dpr;
 
   const [hovered, setHovered] = useState<ElementId | null>(null);
   const [lingering, setLingering] = useState<ElementId | null>(null);
@@ -46,7 +51,10 @@ export function App() {
   }, [engine]);
 
   useEffect(() => engine.sync(state.elements), [engine, state.elements]);
-  useEffect(() => engine.setMaster(state.master), [engine, state.master]);
+  useEffect(
+    () => engine.setMaster(state.master, state.masterMuted),
+    [engine, state.master, state.masterMuted],
+  );
   useEffect(() => {
     engine.onChirp = (ms) => world.birdSing(ms);
   }, [engine, world]);
@@ -157,19 +165,24 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [openId, close]);
 
-  const openFromKeyboardOrInventory = (id: ElementId, focusBar: boolean) => {
+  const openFromKeyboard = (id: ElementId) => {
     setPinned(id);
     setLingering(id);
-    setFocusBarOnOpen(focusBar);
+    setFocusBarOnOpen(true);
   };
 
   const bar = openId ? ELEMENT_BY_ID[openId] : null;
+  const pal = state.night ? NIGHT : DAY;
   const cursor = hovered ? 'pointer' : 'default';
 
   return (
     <div
       className={`app ${idle ? 'idle' : ''} ${state.night ? 'night' : 'day'}`}
-      style={{ ['--u' as string]: `${scale}px` }}
+      style={{
+        ['--u' as string]: `${uiUnit}px`,
+        ['--scene-top' as string]: pal.sky0,
+        ['--scene-bottom' as string]: pal.lawnMid,
+      }}
     >
       <h1 className="sr-only">CalScape: Glade facing Doe Library</h1>
       <div className="stage" style={{ width: W * scale, height: H * scale }}>
@@ -201,7 +214,7 @@ export function App() {
               aria-expanded={openId === e.id}
               onFocus={() => setFocused(e.id)}
               onBlur={() => setFocused((f) => (f === e.id ? null : f))}
-              onClick={() => openFromKeyboardOrInventory(e.id, true)}
+              onClick={() => openFromKeyboard(e.id)}
             />
           );
         })}
@@ -222,6 +235,7 @@ export function App() {
               if (!pinned) startGrace();
             }}
             onPin={() => setPinned(bar.id)}
+            onPreview={(volume) => engine.preview(bar.id, volume, state.elements[bar.id].muted)}
             dispatch={dispatch}
             afterRemove={() => {
               overBar.current = false;
@@ -229,16 +243,12 @@ export function App() {
             }}
           />
         )}
-
-        <div className="chrome corner top-left">CalScape</div>
-        <div className="chrome corner top-right">Glade</div>
-
-        <BottomControls
-          state={state}
-          dispatch={dispatch}
-          onOpen={(id) => openFromKeyboardOrInventory(id, false)}
-        />
       </div>
+
+      <div className="chrome panel corner top-left">CalScape</div>
+      <div className="chrome panel corner top-right">Glade</div>
+
+      <BottomControls state={state} dispatch={dispatch} />
     </div>
   );
 }

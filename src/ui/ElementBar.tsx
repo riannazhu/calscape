@@ -12,6 +12,8 @@ interface Props {
   onPointerEnter(): void;
   onPointerLeave(): void;
   onPin(): void;
+  /** Plays a short sample at the newly chosen volume. */
+  onPreview(volume: number): void;
   afterRemove(): void;
   dispatch: Dispatch<Action>;
 }
@@ -19,7 +21,7 @@ interface Props {
 const TRANSFORM = {
   above: 'translate(-50%, -100%)',
   below: 'translate(-50%, 0)',
-  right: 'translate(0, 0)',
+  right: 'translate(0, -50%)',
 };
 
 /** Compact controls anchored to a scene object. */
@@ -31,6 +33,7 @@ export function ElementBar({
   onPointerEnter,
   onPointerLeave,
   onPin,
+  onPreview,
   afterRemove,
   dispatch,
 }: Props) {
@@ -40,8 +43,12 @@ export function ElementBar({
   }, [autoFocus]);
 
   const level = Math.round(state.volume * VOLUME_STEPS);
-  const setLevel = (n: number) =>
-    dispatch({ type: 'setVolume', id: def.id, volume: Math.min(VOLUME_STEPS, Math.max(0, n)) / VOLUME_STEPS });
+  const setLevel = (n: number) => {
+    const next = Math.min(VOLUME_STEPS, Math.max(0, n));
+    if (next === level) return;
+    dispatch({ type: 'setVolume', id: def.id, volume: next / VOLUME_STEPS });
+    onPreview(next / VOLUME_STEPS);
+  };
 
   return (
     <div

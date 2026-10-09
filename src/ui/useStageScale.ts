@@ -1,20 +1,26 @@
 import { useEffect, useState } from 'react';
 
+/** At most this fraction of the scene's width or height is cropped to fill the window. */
+const MAX_CROP = 0.2;
+
 /**
- * Size of one logical scene pixel in CSS pixels. The scale is an integer in
- * device pixels, so nearest-neighbour scaling stays crisp on HiDPI screens.
+ * `scale` is the size of one logical scene pixel in CSS pixels, chosen so the
+ * scene covers the window, cropping no more than MAX_CROP of either axis.
+ * `fit` is the scale at which the whole scene would just fit.
  */
 export function useStageScale(w: number, h: number) {
   const compute = () => {
-    const dpr = window.devicePixelRatio || 1;
-    const device = Math.floor(Math.min((window.innerWidth * dpr) / w, (window.innerHeight * dpr) / h));
-    return Math.max(1, device) / dpr;
+    const sx = window.innerWidth / w;
+    const sy = window.innerHeight / h;
+    const cover = Math.max(sx, sy);
+    const scale = Math.min(cover, sx / (1 - MAX_CROP), sy / (1 - MAX_CROP));
+    return { scale, fit: Math.min(sx, sy) };
   };
-  const [scale, setScale] = useState(compute);
+  const [size, setSize] = useState(compute);
   useEffect(() => {
-    const onResize = () => setScale(compute());
+    const onResize = () => setSize(compute());
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   });
-  return scale;
+  return size;
 }

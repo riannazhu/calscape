@@ -1,12 +1,17 @@
 :root {
-  --frame: #0e1116;
-  --panel: rgba(16, 20, 34, 0.78);
-  --panel-edge: #e9e2cf;
-  --panel-shadow: rgba(0, 0, 0, 0.45);
-  --ink: #f1ead6;
-  --ink-dim: #8d90a3;
-  --accent: #f2c66d;
-  --block-off: #3d4358;
+  --frame: #0b0f1f;
+  --panel: rgba(13, 19, 42, 0.84);
+  --panel-edge: #2e3d6b;
+  --panel-highlight: rgba(150, 190, 255, 0.1);
+  --panel-shadow: rgba(4, 6, 18, 0.5);
+  --ink: #eef3ff;
+  --ink-dim: #7f8cb6;
+  --tile-edge: #2a375f;
+  --accent: #5fb0ff;
+  --accent-bright: #cfe8ff;
+  --accent-soft: rgba(95, 176, 255, 0.16);
+  --block-off: #2e3a5e;
+  --block-muted: #5d6a92;
 }
 
 * {
@@ -44,13 +49,17 @@ body {
   position: relative;
   width: 100%;
   height: 100%;
-  display: grid;
-  place-items: center;
+  overflow: hidden;
+  /* Extends the sky and lawn when the window is too tall to crop to. */
+  background: linear-gradient(var(--scene-top) 50%, var(--scene-bottom) 50%);
 }
 
+/* The scene covers the window; whatever overflows the shorter axis is cropped. */
 .stage {
-  position: relative;
-  overflow: hidden;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
 }
 
 .scene {
@@ -82,41 +91,36 @@ body {
   cursor: none !important;
 }
 
-.corner {
-  position: absolute;
-  top: calc(var(--u) * 4);
-  font-size: calc(var(--u) * 4);
-  line-height: 1;
-  letter-spacing: calc(var(--u) * 0.25);
-  color: var(--ink);
-  text-shadow: var(--u) var(--u) 0 var(--panel-shadow);
-  pointer-events: none;
-}
-
-.top-left {
-  left: calc(var(--u) * 5);
-}
-
-.top-right {
-  right: calc(var(--u) * 5);
-}
-
-.app.day .corner {
-  color: #1d2738;
-  text-shadow: var(--u) var(--u) 0 rgba(255, 255, 255, 0.35);
-}
-
 /* Pixel panels and tiles. */
 .panel {
   background: var(--panel);
   border: var(--u) solid var(--panel-edge);
   box-shadow:
-    inset var(--u) var(--u) 0 rgba(255, 255, 255, 0.08),
-    var(--u) var(--u) 0 var(--panel-shadow);
+    inset var(--u) var(--u) 0 var(--panel-highlight),
+    0 var(--u) 0 var(--panel-shadow);
   padding: calc(var(--u) * 2);
   display: flex;
   align-items: center;
   gap: calc(var(--u) * 2);
+}
+
+.corner {
+  position: absolute;
+  top: calc(var(--u) * 3);
+  padding: calc(var(--u) * 1.5) calc(var(--u) * 3);
+  font-size: calc(var(--u) * 4);
+  line-height: 1;
+  letter-spacing: calc(var(--u) * 0.25);
+  color: var(--ink);
+  pointer-events: none;
+}
+
+.top-left {
+  left: calc(var(--u) * 3);
+}
+
+.top-right {
+  right: calc(var(--u) * 3);
 }
 
 .tile {
@@ -129,24 +133,30 @@ body {
   display: grid;
   place-items: center;
   color: var(--ink);
-  background: rgba(255, 255, 255, 0.04);
-  border: var(--u) solid var(--ink-dim);
+  background: rgba(255, 255, 255, 0.03);
+  border: var(--u) solid var(--tile-edge);
   cursor: pointer;
   position: relative;
 }
 
 .tile:hover {
-  border-color: var(--ink);
-  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--ink-dim);
+  background: rgba(255, 255, 255, 0.07);
 }
 
 .tile:active {
   transform: translateY(var(--u));
 }
 
-.tile.active {
+.tile.active,
+.inventory.present {
   border-color: var(--accent);
-  color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 var(--u) rgba(95, 176, 255, 0.25);
+}
+
+.tile.active {
+  color: var(--accent-bright);
 }
 
 .tile[aria-disabled='true'] {
@@ -155,8 +165,9 @@ body {
 }
 
 .tile:focus-visible,
-.blocks:focus-visible {
-  outline: var(--u) solid var(--accent);
+.blocks:focus-visible,
+.master-mute:focus-visible {
+  outline: var(--u) solid var(--accent-bright);
   outline-offset: var(--u);
 }
 
@@ -165,30 +176,15 @@ body {
   height: calc(var(--u) * 11);
 }
 
-.inventory.present {
-  border-color: var(--accent);
-  background: rgba(242, 198, 109, 0.12);
-}
-
-.inventory.present::after {
-  content: '';
-  position: absolute;
-  top: var(--u);
-  right: var(--u);
-  width: calc(var(--u) * 2);
-  height: calc(var(--u) * 2);
-  background: var(--accent);
-}
-
 .bottom-left,
 .bottom-center,
 .bottom-right {
   position: absolute;
-  bottom: calc(var(--u) * 4);
+  bottom: calc(var(--u) * 3);
 }
 
 .bottom-left {
-  left: calc(var(--u) * 4);
+  left: calc(var(--u) * 3);
 }
 
 .bottom-center {
@@ -197,7 +193,7 @@ body {
 }
 
 .bottom-right {
-  right: calc(var(--u) * 4);
+  right: calc(var(--u) * 3);
   display: flex;
   align-items: stretch;
   gap: calc(var(--u) * 2);
@@ -208,7 +204,7 @@ body {
   min-height: calc(var(--u) * 16);
   background: var(--panel);
   border-color: var(--panel-edge);
-  box-shadow: var(--u) var(--u) 0 var(--panel-shadow);
+  box-shadow: 0 var(--u) 0 var(--panel-shadow);
 }
 
 /* Volume blocks, shared by master volume and element bars. */
@@ -229,14 +225,35 @@ body {
 
 .block.on {
   background: var(--accent);
+  box-shadow: inset 0 var(--u) 0 var(--accent-bright);
 }
 
 .master {
   padding: calc(var(--u) * 2) calc(var(--u) * 3);
 }
 
-.master-icon {
+.master-mute {
+  appearance: none;
+  margin: 0;
+  padding: var(--u);
+  border: 0;
+  background: none;
   color: var(--ink);
+  cursor: pointer;
+}
+
+.master-mute:hover {
+  color: var(--accent-bright);
+}
+
+.master.muted .master-mute {
+  color: var(--accent);
+}
+
+.master.muted .block.on,
+.element-bar.muted .block.on {
+  background: var(--block-muted);
+  box-shadow: none;
 }
 
 .master-blocks {
@@ -253,10 +270,10 @@ body {
   gap: var(--u);
   padding: var(--u);
   z-index: 2;
-}
-
-.element-bar.muted .block.on {
-  background: var(--ink-dim);
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 var(--u) rgba(95, 176, 255, 0.25),
+    0 var(--u) 0 var(--panel-shadow);
 }
 
 .element-bar.muted .tile:first-child {
@@ -265,8 +282,8 @@ body {
 }
 
 .element-bar .remove:hover {
-  color: #f0a08a;
-  border-color: #f0a08a;
+  color: #ffb0a0;
+  border-color: #ffb0a0;
 }
 
 /* Invisible keyboard targets over each sprite; the canvas draws the outline. */
