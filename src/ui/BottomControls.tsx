@@ -13,9 +13,17 @@ import {
   SPEAKER,
   SPEAKER_MUTED,
   SUN,
+  SUNSET,
 } from './icons';
+import type { TimeOfDay } from '../scene/palette';
 
 const TILE_ART = { rain: CLOUD_TILE, bird: BIRD_IDLE, bell: BELL_TILE };
+
+const TIMES: { time: TimeOfDay; label: string; icon: string[] }[] = [
+  { time: 'day', label: 'Day', icon: SUN },
+  { time: 'sunset', label: 'Sunset', icon: SUNSET },
+  { time: 'night', label: 'Night', icon: MOON },
+];
 
 interface Props {
   state: AppState;
@@ -28,22 +36,17 @@ export function BottomControls({ state, dispatch }: Props) {
   return (
     <>
       <div className="chrome bottom-left panel" role="group" aria-label="Time of day">
-        <button
-          className={`tile ${!state.night ? 'active' : ''}`}
-          aria-label="Day"
-          aria-pressed={!state.night}
-          onClick={() => dispatch({ type: 'setNight', night: false })}
-        >
-          <Icon rows={SUN} />
-        </button>
-        <button
-          className={`tile ${state.night ? 'active' : ''}`}
-          aria-label="Night"
-          aria-pressed={state.night}
-          onClick={() => dispatch({ type: 'setNight', night: true })}
-        >
-          <Icon rows={MOON} />
-        </button>
+        {TIMES.map(({ time, label, icon }) => (
+          <button
+            key={time}
+            className={`tile ${state.time === time ? 'active' : ''}`}
+            aria-label={label}
+            aria-pressed={state.time === time}
+            onClick={() => dispatch({ type: 'setTime', time })}
+          >
+            <Icon rows={icon} />
+          </button>
+        ))}
       </div>
 
       <div className="chrome bottom-center panel" role="group" aria-label="Inventory">

@@ -17,12 +17,22 @@ Music is too distracting to study with. I want CalScape to play on the TV as a c
 | One Glade scene facing Doe, with Campanile behind it on the left | Additional scenes and scene switching |
 | Rain cloud, bird, and Campanile bell elements | Storm, creek, chatter, and more elements |
 | Add/remove, mute, and individual volume controls | Free dragging, multiple copies, and advanced placement |
-| Day/night visual switch; master volume; fullscreen | Automatic time transitions and Spotify integration |
+| Day/sunset/night visual switch; master volume; fullscreen | Automatic time transitions and Spotify integration |
 | Confirmation for periodic sounds; subtle animation; idle control hiding | Accounts and saved presets |
 
 ## 4. Artistic direction
 
 Use a smaller, tile-like world with obvious square pixels, a restrained palette, simple foliage, and broad areas of lawn and sky. Avoid photographic textures, dense grass detail, and a highly rendered illustration. The attached mockups guide composition and controls; their backdrop detail should be reduced.
+
+Everything stays on the pixel grid, including the sky and light. Sky gradients are drawn as solid colour steps on 2 × 2 pixel blocks, never smooth per-pixel blending or checkerboard dithering. Step edges wobble gently so bands read as natural rather than ruled, and they follow the light: at sunset they arc around the low sun, by day they tilt slightly toward it. Glows around the moon and street lamps are a few concentric stepped rings on the same block grid; the sun and stars have no halo.
+
+Three times of day share one composition:
+
+- **Day:** clear blue sky with the sun high on the right; few lit windows. People play spikeball, picnic, sit together, read and sunbathe on a towel.
+- **Sunset:** a blended periwinkle-to-lavender-to-pink-to-peach sky as in Figure 5, warmest around the low sun on the left, with pink cloud streaks lit from below. The Glade has sunset activities: a picnic, a small guitar circle, a couple watching the sun go down, a photographer shooting the sunset, and someone lying in the grass.
+- **Night:** dark sky, moon, stars that occasionally twinkle, and warm lamp glow in front of Doe. No people on the Glade; spotted does in warm brown tones graze there instead.
+
+Foreground trees frame the top corners: full, round leaf clumps on visible branches, with some sky showing between them. The left canopy keeps clear space around the Campanile's spire.
 
 Face Doe from the Glade at lawn level. Doe must read as a long pale facade with tall repeated windows and a low roofline. Place the Campanile behind and to the left of Doe, following Figure 5. Keep both landmarks recognizable when simplifying them.
 
@@ -30,7 +40,7 @@ Face Doe from the Glade at lawn level. Doe must read as a long pale facade with 
 
 | Region | Required behavior |
 | --- | --- |
-| Bottom left | Sun and moon tiles switch the visual day/night palette. Preserve all audio settings and playback. |
+| Bottom left | Sun, sunset and moon tiles switch between day, sunset and night. At night the Glade has deer instead of people. Preserve all audio settings and playback. |
 | Bottom center | Pixel inventory with element sprites and an add tile. Select an absent element to add it at a predefined scene position. Mark present elements without duplicating them. |
 | Bottom right | Master volume control and adjacent fullscreen tile, matching the nighttime Glade, café, and marina suite. Prefer the shown pixel volume blocks; retain smooth gain internally. |
 | Scene objects | Hover gives the physical sprite a clear outline and shows its anchored volume adjustment bar. |
@@ -57,13 +67,13 @@ Face Doe from the Glade at lawn level. Doe must read as a long pale facade with 
 ### Sound behavior
 
 - Enable audio through an explicit user interaction. Continuous sounds start normally when added and need no separate preview. For periodic sounds, play one brief confirmation on add: adding the Campanile between hours plays one bell chime, then waits for the next hourly event. Respect mute and master-volume settings.
-- Rain loops beneath the cloud; birds chirp intermittently from the bird sprite. Campanile rings at the top of each hour in Berkeley time. This is app timing, not a promise to reproduce the campus bell schedule.
+- Rain loops beneath the cloud; birds chirp intermittently from the bird sprite. Campanile rings at the top of each hour on the user's local clock, striking the hour on a 12-hour clock (once at 1 PM, twice at 2 AM, twelve times at noon and midnight). The sound is a single isolated strike of the Great Bear Bell. This is app timing, not a promise to reproduce the campus bell schedule.
 - Master volume multiplies each element gain, preserving the mix. Final gain = master volume × element volume × mute state. Muting does not erase volume; increasing volume does not automatically unmute.
-- Use short fades on gain changes and stops to avoid clicks. Use seamless loops and modest default levels. Keep the sound mix unchanged when switching day/night.
+- Use short fades on gain changes and stops to avoid clicks. Use seamless loops and modest default levels. Keep the sound mix unchanged when switching the time of day.
 
 ### Animation and study mode
 
-Use a fixed camera with slow cloud movement, sparse bird motion, gentle rain pixels, and occasional leaf movement. Hover outlines and controls appear only during interaction. Proposed default: hide the menu bars and buttons after five seconds without pointer or keyboard activity when nothing is selected; reveal them on pointer movement or keyboard focus. Keep the scene and sound playing. Never hide controls while someone is adjusting them. Respect reduced-motion preferences.
+Use a fixed camera with slow cloud movement, sparse bird motion, gentle rain pixels, occasional leaf movement, a slow spikeball game in daylight, rare star twinkles, and does that mostly graze and only occasionally wander at night. Hover outlines and controls appear only during interaction. Proposed default: hide the menu bars and buttons after five seconds without pointer or keyboard activity when nothing is selected; reveal them on pointer movement or keyboard focus. Keep the scene and sound playing. Never hide controls while someone is adjusting them. Respect reduced-motion preferences.
 
 ### Suggested implementation
 
@@ -80,14 +90,14 @@ Proposed art starting point: a 320 × 180 logical scene with 16 × 16 tiles and 
 1. Assemble the scene and inventory.
 2. Implement sprite presence and hover controls.
 3. Add periodic sound confirmation, mixing, mute, and cleanup.
-4. Add day/night and subtle animation.
+4. Add day/sunset/night and subtle animation.
 5. Add fullscreen, idle hiding, and keyboard/touch behavior.
 
 ### MVP acceptance checks
 
 - Add rain: its cloud appears and the rain loop starts. Mute: cloud and rain remain visible, audio stops. Remove: both disappear.
 - Hover a sprite and move onto its bar: outline is clear and controls remain usable. Clicking empty space closes them.
-- Change master volume: relative element levels stay proportional. Switch night mode: audio does not restart or change.
+- Change master volume: relative element levels stay proportional. Switch the time of day: audio does not restart or change.
 - Remove and re-add repeatedly: no duplicate loops or leaked timers. Removing the Campanile removes its tower sprite and stops its sound and timers. Adding it plays one confirmation chime; enabled bells then fire once per hour.
 - Use fullscreen and study for an hour: motion stays calm, loops have no obvious seams, and controls work with keyboard and touch.
 

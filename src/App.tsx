@@ -2,7 +2,7 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { AudioEngine } from './audio/engine';
 import { ELEMENTS, ELEMENT_BY_ID, type ElementId } from './elements';
 import { H, W } from './scene/backdrop';
-import { DAY, NIGHT } from './scene/palette';
+import { PALETTES } from './scene/palette';
 import { World } from './scene/world';
 import { initialState, reducer } from './state';
 import { BottomControls } from './ui/BottomControls';
@@ -60,10 +60,10 @@ export function App() {
   }, [engine, world]);
 
   useEffect(() => {
-    world.night = state.night;
+    world.time = state.time;
     world.highlight = highlight;
     for (const e of ELEMENTS) world.present[e.id] = state.elements[e.id].present;
-  }, [world, state.night, state.elements, highlight]);
+  }, [world, state.time, state.elements, highlight]);
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -172,12 +172,12 @@ export function App() {
   };
 
   const bar = openId ? ELEMENT_BY_ID[openId] : null;
-  const pal = state.night ? NIGHT : DAY;
+  const pal = PALETTES[state.time];
   const cursor = hovered ? 'pointer' : 'default';
 
   return (
     <div
-      className={`app ${idle ? 'idle' : ''} ${state.night ? 'night' : 'day'}`}
+      className={`app ${idle ? 'idle' : ''} ${state.time}`}
       style={{
         ['--u' as string]: `${uiUnit}px`,
         ['--scene-top' as string]: pal.sky0,

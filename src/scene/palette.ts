@@ -1,3 +1,5 @@
+export type TimeOfDay = 'day' | 'sunset' | 'night';
+
 export type PaletteKey =
   | 'sky0'
   | 'sky1'
@@ -5,11 +7,11 @@ export type PaletteKey =
   | 'sky3'
   | 'sky4'
   | 'sky5'
-  | 'wispLight'
+  | 'wispTop'
   | 'wispMid'
-  | 'wispShade'
+  | 'wispBase'
   | 'sun'
-  | 'sunGlow'
+  | 'glow'
   | 'star'
   | 'moon'
   | 'moonShade'
@@ -98,27 +100,141 @@ export type PaletteKey =
   | 'netRim'
   | 'netMesh'
   | 'ball'
+  | 'deer'
+  | 'deerDark'
+  | 'deerLight'
   | 'outline'
   | 'outlineGlow';
 
 export type Palette = Record<PaletteKey, string>;
 
-/** Dusk over the Glade. */
-export const DAY: Palette = {
-  sky0: '#5559bd',
-  sky1: '#6668cc',
-  sky2: '#7c78d4',
-  sky3: '#a184cf',
-  sky4: '#cc8fc0',
-  sky5: '#eba3a6',
-  wispLight: '#ffc9b8',
-  wispMid: '#f2a3b0',
-  wispShade: '#c886b8',
-  sun: '#fff1c9',
-  sunGlow: '#ffc99a',
+/** Colours shared by the daylit palettes: people, birds and small props. */
+const DAYLIT_SPRITES = {
+  birdBody: '#3a6fcf',
+  birdLight: '#78a6ee',
+  birdDark: '#264685',
+  birdBelly: '#e0d8e2',
+  beak: '#24222c',
+  eye: '#121018',
+  skin1: '#f2c9a5',
+  skin2: '#c98d63',
+  skin3: '#8a5a3c',
+  hairDark: '#2b2230',
+  hairBrown: '#6a4232',
+  hairGold: '#d9a84e',
+  shirtRed: '#d2564e',
+  shirtBlue: '#4a78c8',
+  shirtYellow: '#efc34e',
+  shirtWhite: '#f1ece8',
+  shirtGreen: '#4f9a6a',
+  pants: '#3d4a78',
+  shoe: '#2a2633',
+  blanketA: '#d8564e',
+  blanketB: '#f3ebe4',
+  basket: '#a8743f',
+  netRim: '#f2d04a',
+  netMesh: '#2a2633',
+  ball: '#f7e36a',
+  deer: '#c07a48',
+  deerDark: '#6e4028',
+  deerLight: '#f6e4c4',
   star: '#c7c3ef',
   moon: '#f6efd6',
   moonShade: '#d8cfb3',
+  gold: '#f4cf62',
+  clockHand: '#36314c',
+  outline: '#d6eeff',
+  outlineGlow: 'rgba(72, 156, 255, 0.6)',
+} satisfies Partial<Palette>;
+
+/** Clear midday: blue sky, the sun high and white clouds. */
+export const DAY: Palette = {
+  ...DAYLIT_SPRITES,
+  sky0: '#3a78d8',
+  sky1: '#4c8ae0',
+  sky2: '#62a0e8',
+  sky3: '#7db5ee',
+  sky4: '#9cc9f2',
+  sky5: '#bfdcf4',
+  wispTop: '#ffffff',
+  wispMid: '#eef4fb',
+  wispBase: '#c9d9ee',
+  sun: '#fffbe6',
+  glow: '#fff4cc',
+  farTree: '#5e8f86',
+  farTreeDark: '#4d7d74',
+  stoneLight: '#f6f2f2',
+  stone: '#e2dcdf',
+  stoneMid: '#c6bfcb',
+  stoneShadow: '#a49eb2',
+  stoneDark: '#807b94',
+  roof: '#b05a4c',
+  roofLight: '#cc7360',
+  roofDark: '#83404a',
+  winLit: '#ffe6a8',
+  winLit2: '#f5c070',
+  winDark: '#4f6c9c',
+  winDark2: '#3a5282',
+  winFrame: '#f4f0f2',
+  door: '#5a4048',
+  redRoof: '#bb5e50',
+  redRoofDark: '#8a4446',
+  creamWall: '#ece0d6',
+  creamShadow: '#c9b7b4',
+  lawnLight: '#8cc957',
+  lawn: '#72b048',
+  lawnMid: '#629c3f',
+  lawnDark: '#4f8536',
+  flowerWhite: '#ffffff',
+  flowerYellow: '#ffd84a',
+  path: '#b7aec8',
+  pathLight: '#cec6dc',
+  pathDark: '#968db0',
+  leafLight: '#93c95a',
+  leaf: '#6aa647',
+  leafMid: '#4f8a3e',
+  leafDark: '#3a6c37',
+  leafDeep: '#2a5130',
+  trunk: '#6e4b3e',
+  trunkDark: '#4a3330',
+  pineLight: '#4f8a5c',
+  pine: '#3b6e4c',
+  pineDark: '#2b573e',
+  lampPost: '#3a3a50',
+  lampGlass: '#fff2c8',
+  lampGlow: '#ffe09a',
+  campLight: '#f7f2f0',
+  campMid: '#dcd4dc',
+  campShadow: '#b4aac2',
+  campDark: '#8a82a4',
+  campArch: '#4a4a6a',
+  campBell: '#c0924e',
+  copperLight: '#93d8bb',
+  copper: '#5aab95',
+  copperDark: '#367c72',
+  clockFace: '#fbf6ea',
+  cloudLight: '#f4f4f8',
+  cloudMid: '#d6d8e2',
+  cloudShade: '#afb3c4',
+  cloudDark: '#8c90a6',
+  rain: '#eef4ff',
+  rainTint: 'rgba(60, 70, 100, 0.16)',
+};
+
+/** Golden hour over the Glade, the sun setting behind the trees on the left. */
+export const SUNSET: Palette = {
+  ...DAYLIT_SPRITES,
+  sky0: '#565bc4',
+  sky1: '#6a6dd2',
+  sky2: '#8580da',
+  sky3: '#a98bd6',
+  sky4: '#d69bc6',
+  sky5: '#f2b2a2',
+  wispTop: '#c48fca',
+  wispMid: '#f0a4ba',
+  wispBase: '#ffcf9c',
+  sun: '#fff1c9',
+  glow: '#ffc58e',
   farTree: '#4c5294',
   farTreeDark: '#3d4382',
   stoneLight: '#e4dce6',
@@ -170,56 +286,27 @@ export const DAY: Palette = {
   copperLight: '#86c9ae',
   copper: '#4f9a88',
   copperDark: '#2f6c66',
-  gold: '#f4cf62',
   clockFace: '#f6efe2',
-  clockHand: '#36314c',
   cloudLight: '#e9dcea',
   cloudMid: '#c3b6d4',
   cloudShade: '#9a8fb5',
   cloudDark: '#766e98',
   rain: '#dfe6ff',
   rainTint: 'rgba(40, 44, 100, 0.18)',
-  birdBody: '#3a6fcf',
-  birdLight: '#78a6ee',
-  birdDark: '#264685',
-  birdBelly: '#e0d8e2',
-  beak: '#24222c',
-  eye: '#121018',
-  skin1: '#f2c9a5',
-  skin2: '#c98d63',
-  skin3: '#8a5a3c',
-  hairDark: '#2b2230',
-  hairBrown: '#6a4232',
-  hairGold: '#d9a84e',
-  shirtRed: '#d2564e',
-  shirtBlue: '#4a78c8',
-  shirtYellow: '#efc34e',
-  shirtWhite: '#f1ece8',
-  shirtGreen: '#4f9a6a',
-  pants: '#3d4a78',
-  shoe: '#2a2633',
-  blanketA: '#d8564e',
-  blanketB: '#f3ebe4',
-  basket: '#a8743f',
-  netRim: '#f2d04a',
-  netMesh: '#2a2633',
-  ball: '#f7e36a',
-  outline: '#d6eeff',
-  outlineGlow: 'rgba(72, 156, 255, 0.6)',
 };
 
 export const NIGHT: Palette = {
-  sky0: '#070c26',
-  sky1: '#0b1233',
-  sky2: '#101a42',
-  sky3: '#16224f',
-  sky4: '#1c2b5c',
-  sky5: '#243467',
-  wispLight: '#34447e',
-  wispMid: '#2a386c',
-  wispShade: '#212d5a',
+  sky0: '#060a22',
+  sky1: '#0a1130',
+  sky2: '#0f193f',
+  sky3: '#15214c',
+  sky4: '#1b2a59',
+  sky5: '#233466',
+  wispTop: '#2c3a6e',
+  wispMid: '#28366a',
+  wispBase: '#34447c',
   sun: '#fff1c9',
-  sunGlow: '#ffc99a',
+  glow: '#3a4c8c',
   star: '#eef0ff',
   moon: '#f6efd6',
   moonShade: '#d6ccb0',
@@ -308,6 +395,18 @@ export const NIGHT: Palette = {
   netRim: '#9a8a48',
   netMesh: '#14121a',
   ball: '#a8a060',
+  deer: '#a66a44',
+  deerDark: '#5c3626',
+  deerLight: '#ecd3ae',
   outline: '#d6eeff',
   outlineGlow: 'rgba(72, 156, 255, 0.65)',
 };
+
+export const PALETTES: Record<TimeOfDay, Palette> = { day: DAY, sunset: SUNSET, night: NIGHT };
+
+/** The time of day that matches a clock hour. */
+export function timeForHour(hour: number): TimeOfDay {
+  if (hour >= 7 && hour < 17) return 'day';
+  if (hour >= 17 && hour < 20) return 'sunset';
+  return 'night';
+}

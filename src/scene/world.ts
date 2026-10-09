@@ -1,12 +1,14 @@
 import type { ElementId } from '../elements';
-import { DAY, NIGHT, type Palette } from './palette';
-import { mulberry32 } from './pixels';
-import { H, PERCH, STARS, W, drawFar, drawFg, drawMid, lawnTop, skyKey } from './backdrop';
+import { PALETTES, type Palette, type TimeOfDay } from './palette';
+import { hex, mulberry32 } from './pixels';
+import { H, PERCH, STARS, W, drawFar, drawFg, drawMid, lawnTop, skyColor } from './backdrop';
 import { SPIKEBALL } from './people';
 import {
   BIRD_IDLE,
   BIRD_SING,
   CAMPANILE,
+  DEER_GRAZE,
+  DEER_WALK,
   RAIN_CLOUDS,
   WISPS,
   drawSprite,
@@ -47,6 +49,28 @@ interface Leaf {
   sway: number;
 }
 
+interface Deer {
+  x: number;
+  /** Row the hooves stand on. */
+  y: number;
+  min: number;
+  max: number;
+  dir: 1 | -1;
+  walking: boolean;
+  since: number;
+  until: number;
+}
+
+const DEER_FRAMES = {
+  walk: [DEER_WALK, DEER_WALK.map(flipX)],
+  graze: [DEER_GRAZE, flipX(DEER_GRAZE)],
+};
+/** One star in this many twinkles, now and then. */
+const TWINKLE_EVERY = 4;
+const DEER_SPEED = 2.5;
+/** Grazing deer lift their heads for this long before dipping back down. */
+const DEER_LOOKUP_MS = 1800;
+
 interface Layers {
   far: HTMLCanvasElement;
   mid: HTMLCanvasElement;
@@ -66,11 +90,11 @@ function alphaMask(c: HTMLCanvasElement) {
  */
 export class World {
   present: Record<ElementId, boolean> = { rain: false, bird: false, bell: false };
-  night = false;
+  time: TimeOfDay = 'day';
   reducedMotion = false;
   highlight: ElementId | null = null;
 
-  private layers = new Map<boolean, Layers>();
+  private layers = new Map<TimeOfDay, Layers>();
   private midMask: Uint8Array;
   private fgMask: Uint8Array;
   private birdSingUntil = 0;
@@ -93,23 +117,30 @@ export class World {
     }));
   });
   private placedCache: Placed[] = [];
+  /** Deer wander the Glade at night, each within its own stretch of lawn. */
+  private deer: Deer[] = [
+    { x: 40, y: 147, min: 12, max: 150, dir: 1, walking: true, since: 0, until: 0 },
+    { x: 130, y: 153, min: 60, max: 210, dir: -1, walking: true, since: 0, until: 0 },
+    { x: 268, y: 149, min: 180, max: 300, dir: -1, walking: true, since: 0, until: 0 },
+  ];
+  private lastDeer = 0;
 
   constructor() {
-    const l = this.getLayers(false);
+    const l = this.getLayers('day');
     this.midMask = alphaMask(l.mid);
     this.fgMask = alphaMask(l.fg);
   }
 
   get palette(): Palette {
-    return this.night ? NIGHT : DAY;
+    return PALETTES[this.time];
   }
 
-  private getLayers(night: boolean): Layers {
-    let l = this.layers.get(night);
+  private getLayers(time: TimeOfDay): Layers {
+    let l = this.layers.get(time);
     if (!l) {
-      const pal = night ? NIGHT : DAY;
-      l = { far: drawFar(pal, night), mid: drawMid(pal, night), fg: drawFg(pal) };
-      this.layers.set(night, l);
+      const pal = PALETTES[time];
+      l = { far: drawFar(pal, time), mid: drawMid(pal, time), fg: drawFg(pal) };
+      this.layers.set(time, l);
     }
     return l;
   }
@@ -230,23 +261,24 @@ export class World {
     this.updateAmbient(now);
     const pal = this.palette;
     const t = this.reducedMotion ? 0 : now / 1000;
-    const { far, mid, fg } = this.getLayers(this.night);
+    const night = this.time === 'night';
+    const { far, mid, fg } = this.getLayers(this.time);
     const placed = this.place(now);
     this.placedCache = placed;
     const get = (id: ElementId) => placed.find((p) => p.id === id);
 
     ctx.drawImage(far, 0, 0);
 
-    if (this.night && !this.reducedMotion) {
+    if (night && !this.reducedMotion) {
       STARS.forEach((s, i) => {
-        if (Math.sin(t * 0.6 + i * 1.7) > 0.985) {
-          ctx.fillStyle = pal[skyKey(s.x, s.y)];
+        if (i % TWINKLE_EVERY === 0 && Math.sin(t * 0.3 + i * 1.7) > 0.99) {
+          ctx.fillStyle = hex(skyColor('night', pal, s.x, s.y));
           ctx.fillRect(s.x, s.y, 1, 1);
         }
       });
     }
 
-    for (const w of WISPS) {
+    if (this.time !== 'day') for (const w of WISPS) {
       const span = W + w.sprite.w + 40;
       const x = Math.floor(((w.x0 + t * w.speed) % span) - w.sprite.w);
       drawSprite(ctx, w.sprite, x, w.y, pal);
@@ -259,7 +291,8 @@ export class World {
     if (bell) for (const s of bell.parts) drawSprite(ctx, s.sprite, s.x, s.y, pal);
 
     ctx.drawImage(mid, 0, 0);
-    this.drawBall(ctx, pal, t);
+    if (night) this.drawDeer(ctx, pal, now);
+    else if (this.time === 'day') this.drawBall(ctx, pal, t);
     if (rain) this.drawDrops(ctx, pal, t, rain.parts);
     ctx.drawImage(fg, 0, 0);
 
@@ -303,6 +336,35 @@ export class World {
     }
     ctx.fillStyle = pal.ball;
     ctx.fillRect(Math.round(x), Math.round(y), 1, 1);
+  }
+
+  /** Deer amble a few steps, stop, look up, then graze. */
+  private drawDeer(ctx: CanvasRenderingContext2D, pal: Palette, now: number) {
+    const dt = this.lastDeer ? Math.min(0.1, (now - this.lastDeer) / 1000) : 0;
+    this.lastDeer = now;
+    for (const d of this.deer) {
+      if (!this.reducedMotion) {
+        if (now > d.until) {
+          d.walking = !d.walking;
+          d.since = now;
+          d.until = now + (d.walking ? 2500 + this.rng() * 2500 : 15000 + this.rng() * 20000);
+          if (d.walking && this.rng() < 0.4) d.dir = d.dir === 1 ? -1 : 1;
+        }
+        if (d.walking) {
+          d.x += d.dir * DEER_SPEED * dt;
+          if (d.x < d.min || d.x > d.max) {
+            d.x = Math.min(d.max, Math.max(d.min, d.x));
+            d.dir = d.dir === 1 ? -1 : 1;
+          }
+        }
+      }
+      const facing = d.dir === 1 ? 0 : 1;
+      const walk = DEER_FRAMES.walk[facing];
+      let sprite = DEER_FRAMES.graze[facing];
+      if (d.walking && !this.reducedMotion) sprite = walk[Math.floor(now / 280) % 2];
+      else if (now - d.since < DEER_LOOKUP_MS) sprite = walk[0];
+      drawSprite(ctx, sprite, Math.round(d.x - sprite.w / 2), d.y - sprite.h + 1, pal);
+    }
   }
 
   private drawDrops(ctx: CanvasRenderingContext2D, pal: Palette, t: number, clouds: Part[]) {

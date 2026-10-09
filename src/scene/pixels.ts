@@ -46,10 +46,28 @@ export function mulberry32(seed: number) {
   };
 }
 
-function parseHex(hex: string): number {
+export type RGB = [r: number, g: number, b: number];
+
+export function rgb(hex: string): RGB {
   const n = parseInt(hex.slice(1), 16);
-  // ImageData is RGBA in memory; Uint32 view is little-endian ABGR.
-  return (0xff << 24) | ((n & 0xff) << 16) | (n & 0xff00) | ((n >> 16) & 0xff);
+  return [(n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff];
+}
+
+export function mix(a: RGB, b: RGB, t: number): RGB {
+  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+}
+
+export function hex([r, g, b]: RGB): string {
+  return `#${((1 << 24) | (Math.round(r) << 16) | (Math.round(g) << 8) | Math.round(b)).toString(16).slice(1)}`;
+}
+
+// ImageData is RGBA in memory; the Uint32 view is little-endian ABGR.
+function pack([r, g, b]: RGB): number {
+  return (0xff << 24) | (Math.round(b) << 16) | (Math.round(g) << 8) | Math.round(r);
+}
+
+function parseHex(h: string): number {
+  return pack(rgb(h));
 }
 
 /** Writes palette colours straight into a pixel buffer, then hands back a canvas. */
@@ -61,7 +79,7 @@ export class Painter {
   constructor(
     readonly w: number,
     readonly h: number,
-    private pal: Palette,
+    readonly pal: Palette,
   ) {
     this.image = new ImageData(w, h);
     this.buf = new Uint32Array(this.image.data.buffer);
@@ -81,6 +99,24 @@ export class Painter {
     y |= 0;
     if (x < 0 || y < 0 || x >= this.w || y >= this.h) return;
     this.buf[y * this.w + x] = this.color(key);
+  }
+
+  /** Sets an arbitrary colour, for smooth gradients outside the palette. */
+  setRGB(x: number, y: number, c: RGB) {
+    x |= 0;
+    y |= 0;
+    if (x < 0 || y < 0 || x >= this.w || y >= this.h) return;
+    this.buf[y * this.w + x] = pack(c);
+  }
+
+  /** Mixes `c` over an already painted pixel; transparent pixels stay transparent. */
+  blend(x: number, y: number, c: RGB, a: number) {
+    x |= 0;
+    y |= 0;
+    if (x < 0 || y < 0 || x >= this.w || y >= this.h || a <= 0) return;
+    const v = this.buf[y * this.w + x];
+    if (v >>> 24 === 0) return;
+    this.buf[y * this.w + x] = pack(mix([v & 0xff, (v >> 8) & 0xff, (v >> 16) & 0xff], c, Math.min(1, a)));
   }
 
   rect(x: number, y: number, w: number, h: number, key: PaletteKey) {

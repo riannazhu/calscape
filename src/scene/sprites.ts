@@ -105,22 +105,24 @@ export const RAIN_CLOUDS: { sprite: Sprite; x: number; y: number }[] = (
   ] as const
 ).map(([w, h, x, y], i) => ({ sprite: rainCloud(w, h, i + 1), x, y }));
 
-/** A thin sunset cloud streak. */
-function wisp(w: number): Sprite {
-  const { sprite, set } = blank(w, 3);
-  for (let x = 0; x < w; x++) {
-    if (x >= Math.round(w * 0.25) && x < Math.round(w * 0.7)) set(x, 0, 'wispLight');
-    set(x, 1, x < 2 || x >= w - 2 ? 'wispShade' : 'wispMid');
-    if (x >= Math.round(w * 0.1) && x < Math.round(w * 0.85)) set(x, 2, 'wispShade');
-  }
+/** A flat cloud streak: pale top, soft body and an underside lit from below. */
+function wisp(w: number, rows: [number, number][]): Sprite {
+  const keys: PaletteKey[] = ['wispTop', 'wispMid', 'wispMid', 'wispBase'];
+  const { sprite, set } = blank(w, rows.length);
+  rows.forEach(([a, b], y) => {
+    for (let x = Math.round(a * w); x < Math.round(b * w); x++) set(x, y, keys[Math.min(y, 3)]);
+  });
   return sprite;
 }
 
 export const WISPS: { sprite: Sprite; y: number; x0: number; speed: number }[] = [
-  { sprite: wisp(30), y: 50, x0: 30, speed: 1 / 8 },
-  { sprite: wisp(22), y: 64, x0: 210, speed: 1 / 10 },
-  { sprite: wisp(40), y: 80, x0: 110, speed: 1 / 9 },
-  { sprite: wisp(26), y: 96, x0: 270, speed: 1 / 12 },
+  { sprite: wisp(34, [[0.3, 0.6], [0.12, 0.85], [0, 1], [0.15, 0.7]]), y: 42, x0: 30, speed: 1 / 8 },
+  { sprite: wisp(22, [[0.35, 0.7], [0.1, 1], [0.2, 0.8]]), y: 58, x0: 210, speed: 1 / 10 },
+  { sprite: wisp(48, [[0.2, 0.45], [0.05, 0.75], [0, 1], [0.1, 0.9]]), y: 72, x0: 110, speed: 1 / 9 },
+  { sprite: wisp(28, [[0.4, 0.75], [0.15, 0.9], [0, 1], [0.25, 0.65]]), y: 88, x0: 270, speed: 1 / 12 },
+  { sprite: wisp(40, [[0.25, 0.55], [0.05, 0.8], [0.1, 1]]), y: 100, x0: 170, speed: 1 / 14 },
+  { sprite: wisp(26, [[0.3, 0.7], [0, 0.9], [0.2, 1]]), y: 52, x0: 100, speed: 1 / 11 },
+  { sprite: wisp(36, [[0.35, 0.6], [0.1, 0.9], [0, 1], [0.2, 0.75]]), y: 93, x0: 40, speed: 1 / 13 },
 ];
 
 /**
@@ -248,4 +250,54 @@ export const BIRD_SING = fromRows(
     '.....K.K...',
   ],
   BIRD_LEGEND,
+);
+
+const DEER_LEGEND: Record<string, PaletteKey> = {
+  B: 'deer',
+  D: 'deerDark',
+  L: 'deerLight',
+  E: 'eye',
+};
+
+/**
+ * A spotted doe, facing right: big ears, cream spots along a russet back, pale
+ * belly and a flicked-up tail. Hooves sit on the bottom row.
+ */
+const DOE_TOP = [
+  '.........D..D..',
+  '.........BB.B..',
+  '..........BBB..',
+  '..........BEBB.',
+  '..........BBBBD',
+  '.........BB....',
+  'L........BB....',
+  'BBBLBBLBBBB....',
+  'BLBBBLBBLBB....',
+  '.BBBBBBBBBL....',
+  '.BLLLLLLLB.....',
+];
+
+export const DEER_WALK = [
+  fromRows([...DOE_TOP, '.B.B....B.B....', '.B.B....B.B....', '.D.D....D.D....'], DEER_LEGEND),
+  fromRows([...DOE_TOP, '..BB.....BB....', '..BB.....BB....', '..DD.....DD....'], DEER_LEGEND),
+];
+
+export const DEER_GRAZE = fromRows(
+  [
+    '...............',
+    '...............',
+    '...............',
+    '...............',
+    '...............',
+    '...............',
+    'L..............',
+    'BBBLBBLBBBB....',
+    'BLBBBLBBLBBB...',
+    '.BBBBBBBBBBBD..',
+    '.BLLLLLLLBBBBD.',
+    '.B.B....B.BEBBD',
+    '.B.B....B.B....',
+    '.D.D....D.D....',
+  ],
+  DEER_LEGEND,
 );

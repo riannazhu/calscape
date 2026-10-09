@@ -52,6 +52,6 @@ Bell's low G plays instead.
   either axis.
 - `src/audio/engine.ts` — Web Audio engine; `sync()` is idempotent so React
   rerenders cannot start duplicate loops.
-- `src/state.ts` — element presence, mute, volume, night mode and master volume.
+- `src/state.ts` — element presence, mute, volume, time of day (day, sunset or night) and master volume.
 - `src/ui/` — inventory, corner controls, anchored element bar and pixel icons.
 - `public/sounds/` — audio recordings (the Campanile bell).

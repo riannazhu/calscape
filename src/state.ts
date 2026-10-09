@@ -4,10 +4,11 @@ import {
   type ElementId,
   type ElementState,
 } from './elements';
+import { timeForHour, type TimeOfDay } from './scene/palette';
 
 export interface AppState {
   elements: Record<ElementId, ElementState>;
-  night: boolean;
+  time: TimeOfDay;
   /** 0..1, multiplies every element gain. */
   master: number;
   /** Silences the whole scene while keeping `master`. */
@@ -19,7 +20,7 @@ export type Action =
   | { type: 'remove'; id: ElementId }
   | { type: 'toggleMute'; id: ElementId }
   | { type: 'setVolume'; id: ElementId; volume: number }
-  | { type: 'setNight'; night: boolean }
+  | { type: 'setTime'; time: TimeOfDay }
   | { type: 'setMaster'; master: number }
   | { type: 'toggleMasterMute' };
 
@@ -28,10 +29,9 @@ const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 const absent = (): ElementState => ({ present: false, muted: false, volume: DEFAULT_VOLUME });
 
 export function initialState(): AppState {
-  const hour = new Date().getHours();
   return {
     elements: { rain: absent(), bird: absent(), bell: absent() },
-    night: hour < 7 || hour >= 19,
+    time: timeForHour(new Date().getHours()),
     master: DEFAULT_MASTER,
     masterMuted: false,
   };
@@ -51,8 +51,8 @@ export function reducer(s: AppState, a: Action): AppState {
       return patch(s, a.id, { muted: !s.elements[a.id].muted });
     case 'setVolume':
       return patch(s, a.id, { volume: clamp01(a.volume) });
-    case 'setNight':
-      return { ...s, night: a.night };
+    case 'setTime':
+      return { ...s, time: a.time };
     case 'setMaster':
       return { ...s, master: clamp01(a.master) };
     case 'toggleMasterMute':
