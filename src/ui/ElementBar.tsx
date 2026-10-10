@@ -1,4 +1,4 @@
-import { useEffect, useRef, type Dispatch } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type Dispatch } from 'react';
 import { VOLUME_STEPS, type ElementDef, type ElementState } from '../elements';
 import type { Action } from '../state';
 import { Icon } from './PixelArt';
@@ -24,7 +24,19 @@ const TRANSFORM = {
   right: 'translate(0, -50%)',
 };
 
-/** Compact controls anchored to a scene object. */
+/** Gap kept between a bar and the window edge, in CSS pixels. */
+const EDGE = 8;
+
+/** How far to move a span [a, b] (already offset by `by`) so it fits inside [0, max]. */
+function fit(a: number, b: number, by: number, max: number) {
+  const a0 = a - by;
+  const b0 = b - by;
+  if (a0 < EDGE) return EDGE - a0;
+  if (b0 > max - EDGE) return Math.max(EDGE - a0, max - EDGE - b0);
+  return 0;
+}
+
+/** Compact controls anchored to a scene object, nudged to stay inside the visible scene. */
 export function ElementBar({
   def,
   state,
@@ -38,6 +50,16 @@ export function ElementBar({
   dispatch,
 }: Props) {
   const firstRef = useRef<HTMLButtonElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
+  const [nudge, setNudge] = useState({ x: 0, y: 0 });
+
+  useLayoutEffect(() => {
+    const r = barRef.current?.getBoundingClientRect();
+    if (!r) return;
+    const x = fit(r.left, r.right, nudge.x, window.innerWidth);
+    const y = fit(r.top, r.bottom, nudge.y, window.innerHeight);
+    if (x !== nudge.x || y !== nudge.y) setNudge({ x, y });
+  });
   useEffect(() => {
     if (autoFocus) firstRef.current?.focus();
   }, [autoFocus]);
@@ -52,10 +74,15 @@ export function ElementBar({
 
   return (
     <div
+      ref={barRef}
       className={`element-bar panel ${state.muted ? 'muted' : ''}`}
       role="group"
       aria-label={`${def.name} controls`}
-      style={{ left: def.bar.x * scale, top: def.bar.y * scale, transform: TRANSFORM[def.bar.place] }}
+      style={{
+        left: def.bar.x * scale,
+        top: def.bar.y * scale,
+        transform: `translate(${nudge.x}px, ${nudge.y}px) ${TRANSFORM[def.bar.place]}`,
+      }}
       onPointerEnter={onPointerEnter}
       onPointerLeave={onPointerLeave}
       onPointerDown={onPin}

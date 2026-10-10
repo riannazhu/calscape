@@ -5,13 +5,10 @@ export type ElementId =
   | 'bird'
   | 'bell'
   | 'squirrel'
-  | 'sprinkler'
-  | 'guitar'
   | 'dove'
   | 'wind'
   | 'crickets'
-  | 'owl'
-  | 'frogs';
+  | 'owl';
 
 export interface ElementState {
   present: boolean;
@@ -31,14 +28,11 @@ export interface ElementDef {
 
 /** Bottom of the stack first; hit-testing walks this list in reverse. */
 export const ELEMENTS: ElementDef[] = [
-  { id: 'wind', name: 'Breeze', bar: { x: 40, y: 72, place: 'below' } },
+  { id: 'wind', name: 'Breeze', bar: { x: 84, y: 64, place: 'below' } },
   { id: 'bell', name: 'Campanile bell', bar: { x: 116, y: 36, place: 'right' } },
-  { id: 'sprinkler', name: 'Sprinkler', bar: { x: 223, y: 146, place: 'above' } },
-  { id: 'guitar', name: 'Guitar circle', bar: { x: 112, y: 138, place: 'above' } },
-  { id: 'crickets', name: 'Crickets', bar: { x: 239, y: 145, place: 'above' } },
-  { id: 'frogs', name: 'Tree frogs', bar: { x: 257, y: 158, place: 'above' } },
+  { id: 'crickets', name: 'Crickets', bar: { x: 202, y: 147, place: 'above' } },
   { id: 'rain', name: 'Rain', bar: { x: 141, y: 30, place: 'below' } },
-  { id: 'dove', name: 'Mourning dove', bar: { x: 205, y: 100, place: 'above' } },
+  { id: 'dove', name: 'Mourning dove', bar: { x: 46, y: 37, place: 'right' } },
   { id: 'squirrel', name: 'Squirrel', bar: { x: 70, y: 33, place: 'right' } },
   { id: 'owl', name: 'Owl', bar: { x: 44, y: 37, place: 'right' } },
   { id: 'bird', name: 'Bird', bar: { x: 49, y: 37, place: 'right' } },
@@ -49,11 +43,11 @@ export const ELEMENT_BY_ID = Object.fromEntries(ELEMENTS.map((e) => [e.id, e])) 
   ElementDef
 >;
 
-/** What each time of day offers, in inventory order. */
+/** What each time of day offers, in inventory order; the third slot is always that time's bird. */
 export const INVENTORY: Record<TimeOfDay, ElementId[]> = {
-  day: ['rain', 'bird', 'bell', 'squirrel', 'sprinkler'],
-  sunset: ['rain', 'bell', 'guitar', 'dove', 'wind'],
-  night: ['rain', 'bell', 'crickets', 'owl', 'frogs'],
+  day: ['rain', 'bell', 'bird', 'squirrel'],
+  sunset: ['rain', 'bell', 'dove', 'wind'],
+  night: ['rain', 'bell', 'owl', 'crickets'],
 };
 
 /**

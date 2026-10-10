@@ -1,8 +1,8 @@
 import { ELEMENTS, type ElementId } from '../elements';
 import { PALETTES, type Palette, type TimeOfDay } from './palette';
-import { hash, hex, mulberry32 } from './pixels';
+import { hex, mulberry32 } from './pixels';
 import { H, PERCH, STARS, W, drawFar, drawFg, drawMid, lawnTop, skyColor } from './backdrop';
-import { GUITARIST, SPIKEBALL } from './people';
+import { SPIKEBALL } from './people';
 import {
   BIRD_IDLE,
   BIRD_SING,
@@ -11,16 +11,13 @@ import {
   DEER_GRAZE,
   DEER_WALK,
   DOVE,
-  FROG,
   OWL,
   RAIN_CLOUDS,
-  SPRINKLER,
   SQUIRREL,
   SUNSET_WISPS,
   WISPS,
   drawSprite,
   flipX,
-  fromRows,
   opaque,
   type Sprite,
 } from './sprites';
@@ -32,13 +29,11 @@ const BIRD_FRAMES = {
 
 const BIRD_POS = { x: PERCH.x, y: PERCH.feetY - BIRD_IDLE.h + 1 };
 const BELL_POS = { x: 98, y: 20 };
-const OWL_POS = { x: PERCH.x - 2, y: PERCH.feetY - OWL.open.h + 1 };
+const OWL_POS = { x: PERCH.x + 2, y: PERCH.feetY - OWL.open.h + 1 };
 const SQUIRREL_POS = { x: 55, y: 30 };
-/** The dove perches on the left lamp in front of Doe. */
-const DOVE_POS = { x: 200, y: 102 };
-const CRICKET_POS = { x: 229, y: 147 };
-const FROG_POS = { x: 252, y: 160 };
-const SPRINKLER_POS = { x: 219, y: 158 };
+/** The dove shares the songbird's and owl's perch. */
+const DOVE_POS = { x: PERCH.x, y: PERCH.feetY - DOVE[0].h + 1 };
+const CRICKET_POS = { x: 200, y: 150 };
 /** The breeze is the left tree itself: everything in the canopy layer left of this column. */
 const TREE_RIGHT = 100;
 
@@ -46,18 +41,6 @@ const TREE_RIGHT = 100;
 const OCCLUDED = new Set<ElementId>(['rain', 'bell']);
 /** Large targets need no extra margin around their silhouette. */
 const UNPADDED = new Set<ElementId>(['rain', 'bell', 'wind']);
-
-/** An impact sprinkler ticks across its arc, then ratchets back. */
-const SPRINKLER_SWEEP_S = 5.3;
-const SPRINKLER_RETURN_S = 1.9;
-const SPRINKLER_TICK_S = 0.24;
-
-const NOTES = [
-  fromRows(['.##', '.#.', '.#.', '##.', '##.'], { '#': 'gold' }),
-  fromRows(['.###', '.#.#', '.#.#', '##.#', '####'], { '#': 'gold' }),
-];
-const NOTE_EVERY_S = 1.8;
-const NOTE_LIFE_S = 5.4;
 
 /** One rally of the spikeball: hand to net, net to the next player's hands. */
 const RALLY = [0, 1, 3, 2, 0, 3, 1];
@@ -232,12 +215,6 @@ export class World {
         return [{ sprite: DOVE[0], ...DOVE_POS }];
       case 'crickets':
         return [{ sprite: CRICKET[0], ...CRICKET_POS }];
-      case 'frogs':
-        return [{ sprite: FROG[0], ...FROG_POS }];
-      case 'sprinkler':
-        return [{ sprite: SPRINKLER, ...SPRINKLER_POS }];
-      case 'guitar':
-        return [{ ...GUITARIST }];
       case 'wind':
         return [{ sprite: this.tree, x: 0, y: 0 }];
     }
@@ -260,7 +237,6 @@ export class World {
       if (!this.present[id]) continue;
       switch (id) {
         case 'bell':
-        case 'guitar':
           out.push({ id, parts: this.restingParts(id) });
           break;
         case 'wind':
@@ -297,15 +273,6 @@ export class World {
           break;
         case 'crickets':
           at(id, CRICKET[!still && t % 2.4 < 0.35 && blip(90) ? 1 : 0], CRICKET_POS);
-          break;
-        case 'frogs': {
-          // Calls come in bouts, a throat puff every 0.8 s, then a quiet spell.
-          const bout = Math.sin(t * 0.37) > 0;
-          at(id, FROG[!still && bout && t % 0.8 < 0.3 ? 1 : 0], FROG_POS);
-          break;
-        }
-        case 'sprinkler':
-          at(id, SPRINKLER, SPRINKLER_POS);
           break;
       }
     }
@@ -410,12 +377,8 @@ export class World {
     ctx.drawImage(mid, 0, 0);
     if (night) this.drawDeer(ctx, pal, now);
     else if (this.time === 'day') this.drawBall(ctx, pal, t);
-    for (const id of ['crickets', 'frogs', 'sprinkler', 'dove'] as const) {
-      const p = get(id);
-      if (p) for (const s of p.parts) drawSprite(ctx, s.sprite, s.x, s.y, pal);
-    }
-    if (get('sprinkler')) this.drawSpray(ctx, pal, t);
-    if (get('guitar')) this.drawNotes(ctx, pal, t);
+    const crickets = get('crickets');
+    if (crickets) for (const s of crickets.parts) drawSprite(ctx, s.sprite, s.x, s.y, pal);
     if (rain) this.drawDrops(ctx, pal, t, rain.parts);
     ctx.drawImage(fg, this.sway(t), 0);
 
@@ -432,7 +395,7 @@ export class World {
       ctx.fillRect(0, 0, W, H);
     }
 
-    for (const id of ['bird', 'owl', 'squirrel'] as const) {
+    for (const id of ['bird', 'owl', 'dove', 'squirrel'] as const) {
       const p = get(id);
       if (p) for (const s of p.parts) drawSprite(ctx, s.sprite, s.x, s.y, pal);
     }
@@ -461,59 +424,6 @@ export class World {
     }
     ctx.fillStyle = pal.ball;
     ctx.fillRect(Math.round(x), Math.round(y), 1, 1);
-  }
-
-  /** The sprinkler's jet: an arc of droplets sweeping across the lawn in ticks. */
-  private drawSpray(ctx: CanvasRenderingContext2D, pal: Palette, t: number) {
-    const cycle = SPRINKLER_SWEEP_S + SPRINKLER_RETURN_S;
-    const phase = t % cycle;
-    const ticks = Math.floor(SPRINKLER_SWEEP_S / SPRINKLER_TICK_S);
-    const along =
-      phase < SPRINKLER_SWEEP_S
-        ? Math.floor(phase / SPRINKLER_TICK_S) / ticks
-        : 1 - (phase - SPRINKLER_SWEEP_S) / SPRINKLER_RETURN_S;
-    // Fanning across the lawn to the left, so the jet never crosses the path.
-    const angle = Math.PI * (0.94 + 0.4 * along);
-    const hx = SPRINKLER_POS.x + 2;
-    const hy = SPRINKLER_POS.y;
-    ctx.fillStyle = pal.rain;
-    const point = (s: number) => [
-      hx + Math.cos(angle) * s,
-      hy - (0.9 * s - 0.04 * s * s) + Math.sin(angle) * s * 0.25,
-    ];
-    const flicker = Math.floor(t * 12);
-    for (let i = 1; i <= 12; i++) {
-      if (hash(i, flicker, 5) < 0.12) continue;
-      const [x, y] = point(i * 1.9);
-      ctx.globalAlpha = 0.95 - i * 0.03;
-      ctx.fillRect(Math.round(x), Math.round(y), 1, 1);
-      ctx.globalAlpha *= 0.5;
-      ctx.fillRect(Math.round(x), Math.round(y) + 1, 1, 1);
-    }
-    // Droplets scattering where the jet comes down.
-    const [lx, ly] = point(22.5);
-    ctx.globalAlpha = 0.7;
-    for (let k = 0; k < 4; k++) {
-      const dx = Math.round((hash(k, flicker, 6) - 0.5) * 6);
-      const dy = Math.round((hash(k, flicker, 7) - 0.5) * 3);
-      ctx.fillRect(Math.round(lx) + dx, Math.round(ly) + dy, 1, 1);
-    }
-    ctx.globalAlpha = 1;
-  }
-
-  /** Little notes drifting up from the guitar and fading. */
-  private drawNotes(ctx: CanvasRenderingContext2D, pal: Palette, t: number) {
-    if (this.reducedMotion) return;
-    const newest = Math.floor(t / NOTE_EVERY_S);
-    for (let k = newest - Math.ceil(NOTE_LIFE_S / NOTE_EVERY_S); k <= newest; k++) {
-      const age = t - k * NOTE_EVERY_S;
-      if (age < 0 || age > NOTE_LIFE_S) continue;
-      ctx.globalAlpha = Math.min(1, (1 - age / NOTE_LIFE_S) * 1.6);
-      const x = GUITARIST.x + 5 + (k % 3) * 2 + Math.sin(age * 1.4 + k) * 2;
-      const y = GUITARIST.y - 6 - age * 3;
-      drawSprite(ctx, NOTES[k % 2 === 0 ? 0 : 1], Math.round(x), Math.round(y), pal);
-    }
-    ctx.globalAlpha = 1;
   }
 
   /** Deer amble a few steps, then stand a while; some pauses end in grazing. */

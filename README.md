@@ -43,6 +43,21 @@ footsteps are removed, and the ring-out is extended from the partials' own
 decay. If the file fails to load, a synthesised bell tuned to the Great Bear
 Bell's low G plays instead.
 
+The mourning dove, `public/sounds/dove.mp3`, is one perch-coo cut from
+"Zenaida macroura - Mourning Dove" (xeno-canto XC128006) by Jonathon Jongsma,
+licensed [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/), via
+[Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Zenaida_macroura_-_Mourning_Dove_XC128006.ogg).
+
+The great horned owl, `public/sounds/owl.mp3`, is one "hoo, hoo-hoo, hoo"
+from "Bubo virginianus - Great Horned Owl" (xeno-canto XC450919) by Michael &
+Katie LaTour, licensed [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/), via
+[Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Bubo_virginianus_-_Great_Horned_Owl_XC450919.mp3).
+
+Both calls are nearly pure tones, so the background is removed by tracking
+each note's pitch and keeping only that pitch and its harmonics; the gaps
+between notes are silent. The adapted clips are shared under the same
+licenses as their sources.
+
 ## Layout
 
 - `src/scene/` — the 320×180 logical scene: palettes, sprites, people on the
@@ -54,4 +69,4 @@ Bell's low G plays instead.
   rerenders cannot start duplicate loops.
 - `src/state.ts` — element presence, mute, volume, time of day (day, sunset or night) and master volume.
 - `src/ui/` — inventory, corner controls, anchored element bar and pixel icons.
-- `public/sounds/` — audio recordings (the Campanile bell).
+- `public/sounds/` — audio recordings (the Campanile bell, mourning dove and owl).

@@ -106,9 +106,6 @@ export type PaletteKey =
   | 'dove'
   | 'doveDark'
   | 'doveLight'
-  | 'frog'
-  | 'frogDark'
-  | 'frogLight'
   | 'outline'
   | 'outlineGlow';
 
@@ -147,9 +144,6 @@ const DAYLIT_SPRITES = {
   dove: '#b09a90',
   doveDark: '#6f5f5c',
   doveLight: '#e3c4b8',
-  frog: '#6aa84a',
-  frogDark: '#3c6c30',
-  frogLight: '#efe6bc',
   star: '#c7c3ef',
   moon: '#f6efd6',
   moonShade: '#d8cfb3',
@@ -413,9 +407,6 @@ export const NIGHT: Palette = {
   dove: '#8c8098',
   doveDark: '#585070',
   doveLight: '#b8a4b4',
-  frog: '#5c9a50',
-  frogDark: '#335c34',
-  frogLight: '#e2dcb4',
   outline: '#d6eeff',
   outlineGlow: 'rgba(72, 156, 255, 0.65)',
 };

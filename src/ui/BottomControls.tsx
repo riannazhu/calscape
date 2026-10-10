@@ -1,19 +1,17 @@
 import { useEffect, useRef, useState, type Dispatch } from 'react';
 import { ELEMENT_BY_ID, INVENTORY, MASTER_STEPS, type ElementId } from '../elements';
-import { type Sprite, BIRD_IDLE, CRICKET, DOVE, FROG, OWL, SQUIRREL } from '../scene/sprites';
+import { type Sprite, BIRD_IDLE, CRICKET, DOVE, OWL, SQUIRREL } from '../scene/sprites';
 import type { Action, AppState } from '../state';
 import { Icon, SpriteArt } from './PixelArt';
 import {
   BELL_TILE,
   CLOUD_TILE,
-  GUITAR_TILE,
   EXIT_FULLSCREEN,
   FULLSCREEN,
   MOON,
   SPEAKER,
   SPEAKER_MUTED,
   SUN,
-  SPRINKLER_TILE,
   SUNSET,
   WIND_TILE,
 } from './icons';
@@ -24,13 +22,10 @@ const TILE_ART: Record<ElementId, Sprite> = {
   bird: BIRD_IDLE,
   bell: BELL_TILE,
   squirrel: SQUIRREL[0],
-  sprinkler: SPRINKLER_TILE,
-  guitar: GUITAR_TILE,
   dove: DOVE[0],
   wind: WIND_TILE,
   crickets: CRICKET[0],
   owl: OWL.open,
-  frogs: FROG[0],
 };
 
 const TIMES: { time: TimeOfDay; label: string; icon: string[] }[] = [

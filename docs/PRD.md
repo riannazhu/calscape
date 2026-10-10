@@ -15,7 +15,7 @@ Music is too distracting to study with. I want CalScape to play on the TV as a c
 | Include in MVP | Defer |
 | --- | --- |
 | One Glade scene facing Doe, with Campanile behind it on the left | Additional scenes and scene switching |
-| Five elements per time of day (rain and the Campanile bell in all three) | Storm, creek, chatter, and more elements |
+| Four elements per time of day (rain and the Campanile bell in all three) | Storm, creek, chatter, and more elements |
 | Add/remove, mute, and individual volume controls | Free dragging, multiple copies, and advanced placement |
 | Day/sunset/night visual switch; master volume; fullscreen | Automatic time transitions and Spotify integration |
 | Confirmation for periodic sounds; subtle animation; idle control hiding | Accounts and saved presets |
@@ -43,9 +43,9 @@ Face Doe from the Glade at lawn level. Doe must read as a long pale facade with 
 | Region | Required behavior |
 | --- | --- |
 | Bottom left | Sun, sunset and moon tiles switch between day, sunset and night. At night the Glade has deer instead of people. Preserve all audio settings and playback. |
-| Bottom center | Pixel inventory with one tile per element sprite, and no separate add tile. Each time of day offers its own five elements (see below). Select an absent element to add it at a predefined scene position. Mark present elements without duplicating them. |
+| Bottom center | Pixel inventory with one tile per element sprite, and no separate add tile. Each time of day offers its own four elements (see below). Select an absent element to add it at a predefined scene position. Mark present elements without duplicating them. |
 | Bottom right | Master volume control and adjacent fullscreen tile, matching the nighttime Glade, café, and marina suite. Prefer the shown pixel volume blocks; retain smooth gain internally. |
-| Scene objects | Hover gives the physical sprite a clear outline and shows its anchored volume adjustment bar. |
+| Scene objects | Hover gives the physical sprite a clear outline and shows its anchored volume adjustment bar. Bars are nudged to stay fully inside the visible scene. |
 | Top corners | Small CalScape label with a pixel bear, and the scene name with a pixel tree. Both icons are about the height of the text, so the two labels are the same height. A clock can be added later if useful. |
 
 All corner menus attach to the visible scene rectangle, not the browser window, so they stay on the scene when the window is taller or wider than it.
@@ -71,22 +71,25 @@ All corner menus attach to the visible scene rectangle, not the browser window, 
 ### Sound behavior
 
 - Enable audio through an explicit user interaction. Continuous sounds start normally when added and need no separate preview. For periodic sounds, play one brief confirmation on add: adding the Campanile between hours plays one bell chime, then waits for the next hourly event. Respect mute and master-volume settings.
-- Each time of day offers five elements, suited to that time:
+- Every sound is ambient background, in level and in pattern. Defaults are low and balanced so no single element pulls focus: beds (rain, breeze, crickets) are soft and even, and animals call rarely and quietly.
+- Each time of day offers four elements, suited to that time:
 
   | Day | Sunset | Night |
   | --- | --- | --- |
-  | Rain, songbird, Campanile bell, squirrel, sprinkler | Rain, Campanile bell, guitar circle, mourning dove, breeze | Rain, Campanile bell, crickets, owl, tree frogs |
+  | Rain, Campanile bell, songbird, squirrel | Rain, Campanile bell, mourning dove, breeze | Rain, Campanile bell, owl, crickets |
+
+  The third slot is always that time's bird.
+
+  Adding an animal (songbird, squirrel, dove or owl) plays its call straight away as confirmation, then it calls every so often.
 
   An element added at one time of day keeps its place, mute and volume when the time changes. If the new time doesn't offer it, its sound fades out and its sprite hides; both come back when you switch back.
 - Rain loops beneath the cloud; the songbird chirps intermittently from its branch.
 - Squirrel (day): a fox squirrel on the songbird's branch flicks its tail and chitters now and then, with a rustle of leaves.
-- Sprinkler (day): an impact sprinkler on the lawn ticks its jet across the grass, then ratchets back, matching its tick-tick-psssh sound.
-- Guitar circle (sunset): the guitarist in the circle fingerpicks a slow, quiet chord progression; little notes float up and fade. Kept soft and low so it stays background.
-- Mourning dove (sunset): a dove on the lamp in front of Doe puffs its breast as it coos "coo-OO, oo, oo, oo" every so often.
-- Breeze (sunset): there is no sprite in the sky; the breeze is the trees themselves. Its target and outline are the left tree, and its tile is a tree with wind lines. While present, the canopies and the perched bird rock by a pixel, and leaves fall more often and drift sideways. The sound is low wind with slow gusts and a faint leaf rustle that rises with each gust.
-- Crickets (night): a cricket on the path, readable against the paving, lifts its wings now and then. The sound is a sparse, soft chirp from two crickets at different pitches and rhythms.
-- Owl (night): a great horned owl on the bird's branch blinks, and puffs its white throat as it hoots "hoo, hoo-hoo, hooo, hooo" every so often.
-- Tree frogs (night): a frog at the edge of the path balloons its throat as Pacific chorus frogs call "rib-bit" in bouts, then rest.
+- Mourning dove (sunset): a dove the songbird's size, on the same branch, lowers its head and puffs its breast as it gives a soft "oo-WOO-oo... oo... oo" every so often. The call is a real recording, `public/sounds/dove.mp3`: one perch-coo from xeno-canto XC128006 (CC BY-SA 3.0, credited in the README). The background noise is removed entirely: only the coo's own pitch and harmonics are kept, so the gaps between notes are silent. A synthesised coo plays if it fails to load.
+- Breeze (sunset): low, even wind with only gentle swells. There is no sprite in the sky; the breeze is the trees themselves. Its target and outline are the left tree, and its tile is a tree with wind lines. While present, the canopies and the perched bird rock by a pixel, and leaves fall more often and drift sideways. 
+- Crickets (night): a tiny cricket on the lawn beside the path lifts its wings now and then. The sound is periodic, like real field crickets: a few nearby crickets each chirp on a steady beat (three or four quick pulses every half-second to a second, now and then pausing for a few beats), over fainter distant crickets on their own steady beats and a hush of tree-cricket trill.
+- Owl (night): a small great horned owl on the bird's branch blinks, and puffs its white throat as it gives a soft, distant "hoo, hoo-hoo, hoo, hoo" every so often. The call is a real recording, `public/sounds/owl.mp3`: one territorial hoot near 315 Hz from xeno-canto XC450919 (CC BY-SA 4.0, credited in the README), cleaned the same way as the dove so only the hoots remain. A synthesised hoot, about two seconds long, plays if it fails to load.
+- Owl, dove and bell calls use a recording from `public/sounds` when one is present (`owl.mp3`, `dove.mp3`, `campanile.mp3`), and fall back to a synthesised call otherwise. Recordings must be licensed for reuse.
 - Campanile rings at the top of each hour on the user's local clock, striking the hour on a 12-hour clock (once at 1 PM, twice at 2 AM, twelve times at noon and midnight). The sound is a single isolated strike of the Great Bear Bell. This is app timing, not a promise to reproduce the campus bell schedule.
 - Master volume multiplies each element gain, preserving the mix. Final gain = master volume × element volume × mute state. Muting does not erase volume; increasing volume does not automatically unmute.
 - Use short fades on gain changes and stops to avoid clicks. Use seamless loops and modest default levels. Switching the time of day leaves elements offered at both times playing untouched; only elements the new time doesn't offer fade out.

@@ -261,63 +261,39 @@ export const BIRD_SING = fromRows(
   BIRD_LEGEND,
 );
 
-/**
- * A field cricket on the path, facing left: long antennae, a tan wing
- * stripe and a big pale hind leg. The second frame lifts its wings to chirp.
- */
-const CRICKET_LEGEND: Record<string, PaletteKey> = {
-  A: 'eye',
-  H: 'eye',
-  B: 'deerDark',
-  W: 'basket',
-  K: 'deer',
-  C: 'eye',
-  L: 'eye',
-};
+/** A tiny field cricket on the path, facing left; the second frame lifts its wings to chirp. */
+const CRICKET_LEGEND: Record<string, PaletteKey> = { A: 'eye', H: 'eye', B: 'deerDark', W: 'basket', K: 'deer', L: 'eye' };
 
 export const CRICKET = [
-  fromRows(
-    ['A.A.............', '.A.A.....KKK....', '..AHH..KKKKKK...', '..HHHBWWWWWWKK..', '..HHBBBBBBBBBBC.', '...L.L..L..L..L.'],
-    CRICKET_LEGEND,
-  ),
-  fromRows(
-    ['A.A.............', '.A.A..WWWKKK....', '..AHHWWWWKKKK...', '..HHHBBBBBBBKK..', '..HHBBBBBBBBBBC.', '...L.L..L..L..L.'],
-    CRICKET_LEGEND,
-  ),
-];
-
-/** A Pacific chorus frog, facing left; the second frame balloons its throat to call. */
-const FROG_LEGEND: Record<string, PaletteKey> = { F: 'frog', D: 'frogDark', T: 'frogLight', E: 'gold' };
-
-export const FROG = [
-  fromRows(['.FF.......', 'FEFFFFF...', 'FFFFFFFFF.', 'TTFFFDFFFD', '.TTFDDFFFD', '.D.D.DDDD.'], FROG_LEGEND),
-  fromRows(['.FF.......', 'FEFFFFF...', 'FFFFFFFFF.', 'TTTFFDFFFD', 'TTTTDDFFFD', '.TTD.DDDD.'], FROG_LEGEND),
+  fromRows(['A.....', '.HBWKK', 'L.L.L.'], CRICKET_LEGEND),
+  fromRows(['A..W..', '.HWBKK', 'L.L.L.'], CRICKET_LEGEND),
 ];
 
 /** A great horned owl facing out: open, blinking and hooting with a puffed white throat. */
 const OWL_LEGEND: Record<string, PaletteKey> = { B: 'deer', D: 'deerDark', L: 'deerLight', G: 'gold', E: 'eye' };
 const owl = (eyes: string, throat: string[]) =>
-  fromRows(
-    ['D.......D', 'DB.....BD', '.BBBBBBB.', 'BLLLBLLLB', eyes, 'BLLLDLLLB', ...throat, '.BLLDLLB.', '..BBBBB..', '..D.D.D..'],
-    OWL_LEGEND,
-  );
+  fromRows(['D.....D', 'DBBBBBD', 'BLLBLLB', eyes, 'BLLDLLB', ...throat, '..BBB..', '..D.D..'], OWL_LEGEND);
 
 export const OWL = {
-  open: owl('BLGEBEGLB', ['.BBLLLBB.', '.BLDLDLB.']),
-  blink: owl('BLDDBDDLB', ['.BBLLLBB.', '.BLDLDLB.']),
-  hoot: owl('BLGEBEGLB', ['BLLLLLLLB', '.BLLLLLB.']),
+  open: owl('LGELEGL', ['.BLLLB.', '.BLDLB.']),
+  blink: owl('LDDLDDL', ['.BLLLB.', '.BLDLB.']),
+  hoot: owl('LGELEGL', ['BLLLLLB', '.BLLLB.']),
 };
 
-/** A mourning dove facing left: pink-buff breast, spotted wing, long pointed tail. */
+/**
+ * A mourning dove facing right like the songbird on the same branch: small
+ * head, pink-buff breast, black wing spots and a long pointed tail. The second
+ * frame lowers the head and puffs the breast to coo.
+ */
 const DOVE_LEGEND: Record<string, PaletteKey> = { B: 'dove', D: 'doveDark', L: 'doveLight', E: 'eye', K: 'doveDark' };
 
 export const DOVE = [
   fromRows(
-    ['.BB.........', 'BEBB........', 'KBLBBBBB....', '.LLLBBDBBB..', '..LLBBBDBBBD', '...LLBBBBB..', '....D.D.....'],
+    ['........BB.', '.......BEBK', '.......BBB.', '..BBBBBLLB.', 'DDBDBBLLLB.', 'D..BBDBLL..', '....BBBB...', '.....D.D...'],
     DOVE_LEGEND,
   ),
   fromRows(
-    ['............', '.BB.........', 'BEBBBBBB....', 'KLLLBBDBB...', 'LLLLBBBDBBBD', '.LLLLBBBBB..', '....D.D.....'],
+    ['...........', '........BB.', '.......BEBK', '..BBBBLLLB.', 'DDBDBLLLLL.', 'D..BBDLLLL.', '....BBBB...', '.....D.D...'],
     DOVE_LEGEND,
   ),
 ];
@@ -335,9 +311,6 @@ export const SQUIRREL = [
     SQUIRREL_LEGEND,
   ),
 ];
-
-/** An impact sprinkler head on its riser. */
-export const SPRINKLER = fromRows(['..K..', '.KSK.', '..S..', '.SSS.'], { K: 'lampPost', S: 'stoneDark' });
 
 const DEER_LEGEND: Record<string, PaletteKey> = {
   B: 'deer',

@@ -2,24 +2,22 @@ import type { ElementId, ElementState } from '../elements';
 
 const FADE = 0.06;
 const STOP_FADE = 0.12;
-/** One isolated Campanile strike; the synthesised bell is used if it fails to load. */
-const BELL_SAMPLE_URL = `${import.meta.env.BASE_URL}sounds/campanile.mp3`;
 /** The tower tolls the hour with strikes about 4 s apart. */
 const STRIKE_SPACING = 4;
 
-/** Keeps the default mix modest: rain and breeze as beds, the rest as accents. */
+/**
+ * Everything is background: rain and breeze sit low as beds, and the animals
+ * are quieter still so no single sound pulls focus.
+ */
 const BASE_LEVEL: Record<ElementId, number> = {
-  rain: 0.55,
-  bird: 0.22,
-  bell: 0.4,
-  squirrel: 0.22,
-  sprinkler: 0.28,
-  guitar: 0.2,
-  dove: 0.28,
-  wind: 0.45,
-  crickets: 0.12,
-  owl: 0.32,
-  frogs: 0.16,
+  rain: 0.3,
+  bird: 0.14,
+  bell: 0.3,
+  squirrel: 0.12,
+  dove: 0.16,
+  wind: 0.18,
+  crickets: 0.07,
+  owl: 0.16,
 };
 /** Each sound comes from roughly where its sprite sits. */
 const PAN: Record<ElementId, number> = {
@@ -27,35 +25,38 @@ const PAN: Record<ElementId, number> = {
   bird: -0.55,
   bell: -0.35,
   squirrel: -0.45,
-  sprinkler: 0.3,
-  guitar: -0.3,
-  dove: 0.25,
+  dove: -0.55,
   wind: 0,
-  crickets: 0.4,
-  owl: -0.6,
-  frogs: 0.5,
+  crickets: 0,
+  owl: -0.55,
 };
 const REVERB_SEND: Record<ElementId, number> = {
   rain: 0,
   bird: 0.12,
   bell: 0.25,
   squirrel: 0.06,
-  sprinkler: 0.05,
-  guitar: 0.2,
-  dove: 0.25,
+  dove: 0.12,
   wind: 0,
-  crickets: 0.1,
-  owl: 0.35,
-  frogs: 0.15,
+  crickets: 0.15,
+  owl: 0.18,
 };
 /** Elements that play a steady loop rather than scheduled events. */
-const LOOPED = new Set<ElementId>(['rain', 'crickets', 'wind', 'sprinkler', 'frogs', 'guitar']);
+const LOOPED = new Set<ElementId>(['rain', 'crickets', 'wind']);
 /** Animals that call now and then: seconds between calls, shortest to longest. */
 const CALL_GAP_S: Partial<Record<ElementId, [number, number]>> = {
-  bird: [6, 18],
-  squirrel: [14, 40],
-  dove: [20, 45],
-  owl: [25, 60],
+  bird: [8, 22],
+  squirrel: [20, 50],
+  dove: [25, 60],
+  owl: [30, 75],
+};
+/**
+ * Optional recordings in public/sounds. Each is used when present; otherwise
+ * the element falls back to its synthesised sound.
+ */
+const SAMPLE_URLS: Partial<Record<ElementId, string>> = {
+  bell: 'campanile.mp3',
+  owl: 'owl.mp3',
+  dove: 'dove.mp3',
 };
 
 type Source = AudioScheduledSourceNode;
@@ -121,48 +122,6 @@ function dropletLoop(ctx: AudioContext, seconds: number, perSecond: number): Aud
   return buf;
 }
 
-/**
- * A small chorus of field crickets. Each voice chirps in bursts of short
- * pulses at its own pitch and rhythm; periods divide the loop evenly so it
- * wraps without a hiccup, and a few chirps are skipped so it never sounds metric.
- */
-function cricketLoop(ctx: AudioContext, seconds: number): AudioBuffer {
-  const sr = ctx.sampleRate;
-  const len = Math.floor(sr * seconds);
-  const buf = ctx.createBuffer(2, len, sr);
-  const left = buf.getChannelData(0);
-  const right = buf.getChannelData(1);
-  const voices = [
-    { freq: 4300, period: 1.9, amp: 1, pan: -0.3 },
-    { freq: 4650, period: 3.3, amp: 0.6, pan: 0.5 },
-  ];
-  const pulse = Math.floor(sr * 0.016);
-  const gap = Math.floor(sr * 0.012);
-  for (const v of voices) {
-    const count = Math.round(seconds / v.period);
-    const step = len / count;
-    const offset = Math.random() * step;
-    for (let k = 0; k < count; k++) {
-      if (Math.random() < 0.3) continue;
-      const start = Math.floor(offset + k * step + (Math.random() - 0.5) * sr * 0.02);
-      const pulses = 3 + Math.floor(Math.random() * 2);
-      const amp = v.amp * (0.7 + Math.random() * 0.3);
-      for (let n = 0; n < pulses; n++) {
-        for (let i = 0; i < pulse; i++) {
-          const env = Math.sin((Math.PI * i) / pulse) ** 2;
-          const sample = amp * env * Math.sin((2 * Math.PI * v.freq * i) / sr);
-          const at = (((start + n * (pulse + gap) + i) % len) + len) % len;
-          left[at] += sample * (1 - v.pan) * 0.5;
-          right[at] += sample * (1 + v.pan) * 0.5;
-        }
-      }
-    }
-  }
-  normalize(left, 0.9);
-  normalize(right, 0.9);
-  return buf;
-}
-
 const addPanned = (left: Float32Array, right: Float32Array, at: number, v: number, pan: number) => {
   const i = ((at % left.length) + left.length) % left.length;
   left[i] += v * (1 - pan) * 0.5;
@@ -170,46 +129,61 @@ const addPanned = (left: Float32Array, right: Float32Array, at: number, v: numbe
 };
 
 /**
- * Pacific chorus frogs: each frog calls "rib-bit" in bouts of a few calls,
- * then rests, so the chorus swells and thins rather than droning.
+ * A night field of crickets. A few nearby field crickets each chirp on a
+ * steady beat, three or four quick pulses near 4–5 kHz every half-second to
+ * a second, sometimes pausing for a few beats. Behind them, fainter distant
+ * crickets keep their own steady beats, over a hush of tree-cricket trill.
+ * Every beat repeats a whole number of times per loop so it wraps without a
+ * seam.
  */
-function frogLoop(ctx: AudioContext, seconds: number): AudioBuffer {
+function cricketLoop(ctx: AudioContext, seconds: number): AudioBuffer {
   const sr = ctx.sampleRate;
   const len = Math.floor(sr * seconds);
   const buf = ctx.createBuffer(2, len, sr);
   const left = buf.getChannelData(0);
   const right = buf.getChannelData(1);
-  const frogs = [
-    { freq: 2100, pan: -0.4, amp: 1 },
-    { freq: 2350, pan: 0.3, amp: 0.7 },
-    { freq: 1900, pan: 0.7, amp: 0.5 },
-  ];
-  // offset s, length s, pitch ratio, level: the second syllable rises.
-  const syllables = [
-    [0, 0.09, 1, 1],
-    [0.15, 0.12, 1.08, 0.85],
-  ];
-  for (const f of frogs) {
-    let at = Math.random() * 4;
-    while (at < seconds) {
-      const calls = 3 + Math.floor(Math.random() * 5);
-      for (let c = 0; c < calls && at < seconds; c++) {
-        for (const [offset, dur, ratio, level] of syllables) {
-          const n = Math.floor(dur * sr);
-          const start = Math.floor((at + offset) * sr);
-          let phase = 0;
-          for (let i = 0; i < n; i++) {
-            const u = i / n;
-            phase += (2 * Math.PI * f.freq * ratio * (1 + 0.05 * u)) / sr;
-            const pulse = (0.5 + 0.5 * Math.sin((2 * Math.PI * 95 * i) / sr)) ** 2;
-            const env = Math.sin(Math.PI * u) ** 0.6 * pulse;
-            const v = f.amp * level * env * (Math.sin(phase) + 0.35 * Math.sin(2 * phase) + 0.15 * Math.sin(3 * phase));
-            addPanned(left, right, start + i, v, f.pan);
-          }
+
+  const chirper = (freq: number, period: number, pulses: number, amp: number, pan: number, rests: boolean) => {
+    const count = Math.round(seconds / period);
+    const step = len / count;
+    const offset = Math.random() * step;
+    const pulse = Math.floor(sr * 0.016);
+    const gap = Math.floor(sr * 0.016);
+    const restFrom = rests ? Math.floor(Math.random() * count) : -1;
+    const restBeats = 3 + Math.floor(Math.random() * 4);
+    for (let k = 0; k < count; k++) {
+      if (restFrom >= 0 && (k - restFrom + count) % count < restBeats) continue;
+      const start = Math.floor(offset + k * step + (Math.random() - 0.5) * sr * 0.006);
+      for (let n = 0; n < pulses; n++) {
+        const level = amp * (n === 0 ? 0.75 : 1);
+        for (let i = 0; i < pulse; i++) {
+          const env = Math.sin((Math.PI * i) / pulse) ** 2;
+          const f = freq * (1 - 0.02 * (i / pulse));
+          addPanned(left, right, start + n * (pulse + gap) + i, level * env * Math.sin((2 * Math.PI * f * i) / sr), pan);
         }
-        at += 0.55 + Math.random() * 0.35;
       }
-      at += 4 + Math.random() * 7;
+    }
+  };
+
+  chirper(4500, 0.62, 3, 0.55, -0.35, false);
+  chirper(4300, 0.85, 4, 0.4, 0.45, true);
+  chirper(4750, 1.05, 3, 0.3, 0.1, true);
+  for (let v = 0; v < 8; v++) {
+    chirper(3900 + Math.random() * 1200, 0.5 + Math.random() * 0.6, 3, 0.07 + Math.random() * 0.07, Math.random() * 1.6 - 0.8, false);
+  }
+
+  for (const [hz, rate, pan] of [
+    [2900, 38, -0.5],
+    [3150, 44, 0.6],
+  ]) {
+    const f = Math.round(hz * seconds) / seconds;
+    const r = Math.round(rate * seconds) / seconds;
+    const swellCycles = 2 + Math.floor(Math.random() * 2);
+    for (let i = 0; i < len; i++) {
+      const t = i / sr;
+      const pulse = (0.5 + 0.5 * Math.sin(2 * Math.PI * r * t)) ** 4;
+      const swell = 0.6 + 0.4 * Math.sin((2 * Math.PI * swellCycles * i) / len);
+      addPanned(left, right, i, 0.04 * pulse * swell * Math.sin(2 * Math.PI * f * t), pan);
     }
   }
   normalize(left, 0.9);
@@ -217,94 +191,6 @@ function frogLoop(ctx: AudioContext, seconds: number): AudioBuffer {
   return buf;
 }
 
-/**
- * An impact sprinkler: a tick and a puff of spray at each step across its arc,
- * then a quick ratchet back. Matches the scene's sprinkler cycle.
- */
-function sprinklerLoop(ctx: AudioContext, sweep: number, back: number, tick: number): AudioBuffer {
-  const sr = ctx.sampleRate;
-  const len = Math.floor(sr * (sweep + back));
-  const buf = ctx.createBuffer(2, len, sr);
-  const left = buf.getChannelData(0);
-  const right = buf.getChannelData(1);
-  const hit = (at: number, amp: number, spray: number, pan: number) => {
-    const start = Math.floor(at * sr);
-    const click = Math.floor(0.004 * sr);
-    for (let i = 0; i < click; i++) {
-      addPanned(left, right, start + i, amp * (Math.random() * 2 - 1) * Math.exp(-i / (0.0012 * sr)), pan);
-    }
-    let y = 0;
-    const n = Math.floor(0.2 * sr);
-    for (let i = 0; i < n; i++) {
-      y += 0.25 * (Math.random() * 2 - 1 - y);
-      addPanned(left, right, start + i, spray * y * Math.exp(-i / (0.05 * sr)), pan);
-    }
-  };
-  const steps = Math.floor(sweep / tick);
-  for (let k = 0; k < steps; k++) hit(k * tick, 0.7, 0.9, -0.6 + (1.2 * k) / steps);
-  const ratchet = Math.floor(back / 0.05);
-  for (let k = 0; k < ratchet; k++) hit(sweep + k * 0.05, 0.25, 0, 0.6 - (1.2 * k) / ratchet);
-  normalize(left, 0.9);
-  normalize(right, 0.9);
-  return buf;
-}
-
-const midiHz = (m: number) => 440 * 2 ** ((m - 69) / 12);
-
-/**
- * Someone in the guitar circle fingerpicking slowly through Cmaj7, Am7, Fmaj7
- * and G6. Each string is a Karplus-Strong pluck; timing is loosely human.
- */
-function guitarLoop(ctx: AudioContext): AudioBuffer {
-  const sr = ctx.sampleRate;
-  const eighth = 0.42;
-  const chords = [
-    [48, 55, 59, 64],
-    [45, 52, 55, 60],
-    [41, 48, 52, 57],
-    [43, 50, 55, 59],
-  ];
-  const patterns = [
-    [0, 1, 2, 3, 2, 1, 3, 2],
-    [0, 2, 1, 3, 1, 2, 3, 1],
-  ];
-  const seconds = patterns.length * chords.length * patterns[0].length * eighth;
-  const len = Math.floor(sr * seconds);
-  const buf = ctx.createBuffer(2, len, sr);
-  const left = buf.getChannelData(0);
-  const right = buf.getChannelData(1);
-  const pluck = (at: number, freq: number, amp: number, pan: number) => {
-    const period = Math.max(2, Math.round(sr / freq));
-    const line = new Float32Array(period);
-    let y = 0;
-    for (let i = 0; i < period; i++) {
-      y += 0.5 * (Math.random() * 2 - 1 - y);
-      line[i] = y;
-    }
-    const start = Math.floor(at * sr);
-    const n = Math.floor(2.8 * sr);
-    let idx = 0;
-    for (let i = 0; i < n; i++) {
-      const cur = line[idx];
-      line[idx] = 0.998 * 0.5 * (cur + line[(idx + 1) % period]);
-      idx = (idx + 1) % period;
-      addPanned(left, right, start + i, cur * amp, pan);
-    }
-  };
-  let at = 0;
-  for (const pattern of patterns) {
-    for (const chord of chords) {
-      pattern.forEach((string) => {
-        const t = Math.max(0, at + (Math.random() - 0.5) * 0.025);
-        pluck(t, midiHz(chord[string]), (string === 0 ? 0.9 : 0.55) * (0.8 + Math.random() * 0.2), -0.3 + string * 0.2);
-        at += eighth;
-      });
-    }
-  }
-  normalize(left, 0.9);
-  normalize(right, 0.9);
-  return buf;
-}
 
 /** Outdoor-ish space: decaying stereo noise, darker as it fades. */
 function reverbImpulse(ctx: AudioContext, seconds: number): AudioBuffer {
@@ -377,10 +263,7 @@ export class AudioEngine {
   private rainBuffers: { hiss: AudioBuffer; drops: AudioBuffer } | null = null;
   private cricketBuffer: AudioBuffer | null = null;
   private windBuffer: AudioBuffer | null = null;
-  private frogBuffer: AudioBuffer | null = null;
-  private sprinklerBuffer: AudioBuffer | null = null;
-  private guitarBuffer: AudioBuffer | null = null;
-  private bellSample: AudioBuffer | null = null;
+  private samples: Partial<Record<ElementId, AudioBuffer>> = {};
   /** Lets the scene animate an animal while it calls. */
   onCall: ((id: ElementId, ms: number) => void) | null = null;
 
@@ -396,18 +279,18 @@ export class AudioEngine {
       convolver.buffer = reverbImpulse(ctx, 3.2);
       this.reverb = ctx.createGain();
       this.reverb.connect(convolver).connect(this.master);
-      void this.loadBellSample(ctx);
+      for (const [id, file] of Object.entries(SAMPLE_URLS)) void this.loadSample(ctx, id as ElementId, file);
     }
     if (this.ctx.state === 'suspended') void this.ctx.resume();
   }
 
-  private async loadBellSample(ctx: AudioContext) {
+  private async loadSample(ctx: AudioContext, id: ElementId, file: string) {
     try {
-      const res = await fetch(BELL_SAMPLE_URL);
+      const res = await fetch(`${import.meta.env.BASE_URL}sounds/${file}`);
       if (!res.ok || !res.headers.get('content-type')?.startsWith('audio')) return;
-      this.bellSample = await ctx.decodeAudioData(await res.arrayBuffer());
+      this.samples[id] = await ctx.decodeAudioData(await res.arrayBuffer());
     } catch {
-      // No recording available; keep the synthesised bell.
+      // No recording available; keep the synthesised sound.
     }
   }
 
@@ -521,15 +404,6 @@ export class AudioEngine {
         return this.cricketSources(ctx, dest, sources);
       case 'wind':
         return this.windSources(ctx, dest, sources);
-      case 'frogs':
-        this.frogBuffer ??= frogLoop(ctx, 17.3);
-        return this.bufferLoop(this.frogBuffer, 'highpass', 900, ctx, dest, sources);
-      case 'guitar':
-        this.guitarBuffer ??= guitarLoop(ctx);
-        return this.bufferLoop(this.guitarBuffer, 'lowpass', 3200, ctx, dest, sources);
-      case 'sprinkler':
-        this.sprinklerBuffer ??= sprinklerLoop(ctx, 5.3, 1.9, 0.24);
-        return this.bufferLoop(this.sprinklerBuffer, 'highpass', 300, ctx, dest, sources);
       default:
         return this.rainSources(ctx, dest, sources);
     }
@@ -564,7 +438,7 @@ export class AudioEngine {
 
   private cricketSources(ctx: AudioContext, dest: AudioNode, sources: SourceSet) {
     this.cricketBuffer ??= cricketLoop(ctx, 13.2);
-    this.bufferLoop(this.cricketBuffer, 'highpass', 2500, ctx, dest, sources);
+    this.bufferLoop(this.cricketBuffer, 'highpass', 2200, ctx, dest, sources);
   }
 
   /**
@@ -578,8 +452,8 @@ export class AudioEngine {
     air.loop = true;
     const lp = ctx.createBiquadFilter();
     lp.type = 'lowpass';
-    lp.frequency.value = 700;
-    lp.Q.value = 0.6;
+    lp.frequency.value = 480;
+    lp.Q.value = 0.5;
     const gust = ctx.createGain();
     gust.gain.value = 0.6;
     air.connect(lp).connect(gust).connect(dest);
@@ -592,22 +466,22 @@ export class AudioEngine {
     hp.type = 'highpass';
     hp.frequency.value = 3000;
     const rustleGain = ctx.createGain();
-    rustleGain.gain.value = 0.05;
+    rustleGain.gain.value = 0.025;
     rustle.connect(hp).connect(rustleGain).connect(dest);
 
     const lfo = ctx.createOscillator();
-    lfo.frequency.value = 0.09;
+    lfo.frequency.value = 0.06;
     const depth = ctx.createGain();
-    depth.gain.value = 0.35;
+    depth.gain.value = 0.15;
     lfo.connect(depth).connect(gust.gain);
     const rustleDepth = ctx.createGain();
-    rustleDepth.gain.value = 0.04;
+    rustleDepth.gain.value = 0.015;
     lfo.connect(rustleDepth).connect(rustleGain.gain);
 
     const tone = ctx.createOscillator();
     tone.frequency.value = 0.053;
     const sweep = ctx.createGain();
-    sweep.gain.value = 300;
+    sweep.gain.value = 140;
     tone.connect(sweep).connect(lp.frequency);
 
     const at = ctx.currentTime;
@@ -688,8 +562,10 @@ export class AudioEngine {
 
   /** One call from an animal; returns its length in seconds. */
   private phrase(id: ElementId, ctx: AudioContext, dest: AudioNode, sources: SourceSet): number {
-    const length =
-      id === 'squirrel'
+    const sample = this.samples[id];
+    const length = sample
+      ? this.playSample(sample, ctx, dest, sources)
+      : id === 'squirrel'
         ? this.chitter(ctx, dest, sources)
         : id === 'dove'
           ? this.coo(ctx, dest, sources)
@@ -700,66 +576,108 @@ export class AudioEngine {
     return length;
   }
 
-  /** A soft, rounded tone gliding through `[time, Hz]` points, for doves and owls. */
-  private voice(
+  private playSample(buffer: AudioBuffer, ctx: AudioContext, dest: AudioNode, sources: SourceSet): number {
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(dest);
+    src.start(ctx.currentTime + 0.05);
+    sources.add(src);
+    return buffer.duration;
+  }
+
+  /**
+   * One steady, nearly pure note gliding through `[fraction, Hz]` points, as
+   * doves and owls call: a quick onset, an even hold and a short release, with
+   * no vibrato. `overtone` is the level of the second harmonic; `breath` adds
+   * a trace of air at the fundamental.
+   */
+  private note(
     ctx: AudioContext,
     dest: AudioNode,
     sources: SourceSet,
     at: number,
     dur: number,
     curve: [number, number][],
-    cutoff: number,
+    overtone: number,
+    breath: number,
   ) {
     const osc = ctx.createOscillator();
-    osc.type = 'triangle';
+    osc.setPeriodicWave(ctx.createPeriodicWave(new Float32Array(3), new Float32Array([0, 1, overtone])));
     osc.frequency.setValueAtTime(curve[0][1], at);
-    for (const [t, f] of curve.slice(1)) osc.frequency.linearRampToValueAtTime(f, at + t * dur);
-    const lp = ctx.createBiquadFilter();
-    lp.type = 'lowpass';
-    lp.frequency.value = cutoff;
+    for (const [u, f] of curve.slice(1)) osc.frequency.linearRampToValueAtTime(f, at + u * dur);
+
     const env = ctx.createGain();
     env.gain.setValueAtTime(0, at);
-    env.gain.linearRampToValueAtTime(1, at + Math.min(0.08, dur * 0.25));
-    env.gain.setTargetAtTime(0, at + dur * 0.7, dur * 0.12);
-    osc.connect(lp).connect(env).connect(dest);
+    env.gain.linearRampToValueAtTime(1, at + 0.045);
+    env.gain.linearRampToValueAtTime(0.85, at + dur - 0.09);
+    env.gain.linearRampToValueAtTime(0, at + dur);
+    osc.connect(env);
+
+    if (breath > 0) {
+      this.rainBuffers ??= { hiss: seamlessNoise(ctx, 9.7, 0.35), drops: dropletLoop(ctx, 6.3, 70) };
+      const air = ctx.createBufferSource();
+      air.buffer = this.rainBuffers.hiss;
+      const band = ctx.createBiquadFilter();
+      band.type = 'bandpass';
+      band.frequency.value = curve[0][1];
+      band.Q.value = 6;
+      const airGain = ctx.createGain();
+      airGain.gain.value = breath;
+      air.connect(band).connect(airGain).connect(env);
+      air.start(at, Math.random() * 8);
+      air.stop(at + dur);
+      sources.add(air);
+    }
+
+    env.connect(dest);
     osc.start(at);
-    osc.stop(at + dur + 0.3);
+    osc.stop(at + dur + 0.02);
     osc.addEventListener('ended', () => env.disconnect());
     sources.add(osc);
   }
 
-  /** The mourning dove's "coo-OO, oo, oo, oo". */
+  /**
+   * The mourning dove's perch-coo, "oo-WOO-oo, oo, oo": an introductory note
+   * that starts low, sweeps up past the main pitch and settles back, then three
+   * steady notes on one pitch near 525 Hz, each with a short glide in and out.
+   * Measured songs span about 470 to 740 Hz, loudest near 527 Hz.
+   */
   private coo(ctx: AudioContext, dest: AudioNode, sources: SourceSet): number {
     const start = ctx.currentTime + 0.05;
-    const k = 1 + (Math.random() - 0.5) * 0.08;
-    const notes: [number, number, [number, number][]][] = [
-      [0, 0.32, [[0, 470], [0.4, 540], [1, 520]]],
-      [0.42, 0.75, [[0, 540], [0.3, 620], [1, 500]]],
-      [1.45, 0.5, [[0, 490], [1, 460]]],
-      [2.1, 0.5, [[0, 480], [1, 450]]],
-      [2.75, 0.55, [[0, 470], [1, 440]]],
+    const f = 525 * (1 + (Math.random() - 0.5) * 0.05);
+    const steady: [number, number][] = [
+      [0, f * 0.9],
+      [0.12, f],
+      [0.85, f * 0.99],
+      [1, f * 0.92],
     ];
-    for (const [t, dur, curve] of notes) {
-      this.voice(ctx, dest, sources, start + t, dur, curve.map(([u, f]) => [u, f * k]), 900);
+    this.note(ctx, dest, sources, start, 0.8, [[0, f * 0.9], [0.15, f * 0.95], [0.45, f * 1.38], [0.7, f * 1.2], [1, f * 0.98]], 0.04, 0);
+    let at = start + 1.2;
+    for (const dur of [0.55, 0.55, 0.6]) {
+      this.note(ctx, dest, sources, at, dur, steady, 0.04, 0);
+      at += dur + 0.3;
     }
-    return 3.4;
+    return at - start;
   }
 
-  /** A great horned owl: "hoo, hoo-hoo, hooo, hooo". */
+  /**
+   * A great horned owl's territorial hoot, "hoo, hoo-hoo, hoo, hoo": low,
+   * narrow-band notes near 310 Hz, the second and third short and quick.
+   */
   private hoot(ctx: AudioContext, dest: AudioNode, sources: SourceSet): number {
     const start = ctx.currentTime + 0.05;
-    const base = 300 + Math.random() * 30;
+    const f = 300 + Math.random() * 25;
     const notes: [number, number][] = [
-      [0, 0.35],
-      [0.75, 0.16],
-      [0.98, 0.16],
-      [1.45, 0.5],
-      [2.2, 0.5],
+      [0, 0.3],
+      [0.52, 0.12],
+      [0.68, 0.13],
+      [1.08, 0.36],
+      [1.66, 0.32],
     ];
     for (const [t, dur] of notes) {
-      this.voice(ctx, dest, sources, start + t, dur, [[0, base * 1.04], [0.3, base], [1, base * 0.95]], 700);
+      this.note(ctx, dest, sources, start + t, dur, [[0, f * 0.94], [0.2, f], [0.75, f], [1, f * 0.9]], 0.15, 0.08);
     }
-    return 2.9;
+    return 2.1;
   }
 
   /** A squirrel's quick "chuk-chuk-chuk" with a rustle of leaves. */
@@ -800,7 +718,7 @@ export class AudioEngine {
     return at - start + 0.6;
   }
 
-  /** An animal that calls once soon after it appears, then every so often. */
+  /** An animal that calls as soon as it appears, then every so often. */
   private createCaller(id: ElementId, ctx: AudioContext): Channel {
     const { gain, release } = this.output(id, ctx);
     const sources = new SourceSet();
@@ -812,7 +730,7 @@ export class AudioEngine {
         schedule((min + Math.random() * (max - min)) * 1000);
       }, delay);
     };
-    schedule(900 + Math.random() * 1500);
+    schedule(60);
     return {
       gain,
       stop: () => {
@@ -824,13 +742,14 @@ export class AudioEngine {
 
   /** One bell strike at `at`; returns how long it rings, in seconds. */
   private strike(ctx: AudioContext, dest: AudioNode, at: number, sources: SourceSet): number {
-    if (this.bellSample) {
+    const sample = this.samples.bell;
+    if (sample) {
       const src = ctx.createBufferSource();
-      src.buffer = this.bellSample;
+      src.buffer = sample;
       src.connect(dest);
       src.start(at);
       sources.add(src);
-      return this.bellSample.duration;
+      return sample.duration;
     }
     return this.synthStrike(ctx, dest, at, sources);
   }
@@ -935,3 +854,7 @@ export class AudioEngine {
     };
   }
 }
+
+// Fast Refresh keeps the running engine (and its loaded recordings) in App's
+// ref, so an edit here only takes effect after a full reload.
+import.meta.hot?.accept(() => location.reload());
