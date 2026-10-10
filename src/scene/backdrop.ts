@@ -82,6 +82,28 @@ export function skyColor(time: TimeOfDay, pal: Palette, x: number, y: number): R
   return c;
 }
 
+const OVERCAST_RAMP: PaletteKey[] = ['cloudDark', 'cloudShade', 'cloudMid'];
+/** How much of the clear sky still tints the cloud deck, so the hour stays legible. */
+const OVERCAST_SKY_SHOW: Record<TimeOfDay, number> = { day: 0.12, sunset: 0.35, night: 0.3 };
+
+/**
+ * A rainy sky: a low deck of cloud, brightest toward the horizon, mottled
+ * into soft billows in 2x2 blocks. No sun, moon or stars break through.
+ */
+export function overcastColor(time: TimeOfDay, pal: Palette, x: number, y: number): RGB {
+  const bx = x >> 1;
+  const by = y >> 1;
+  const levels = 12;
+  const billow = (noise(bx, by * 2, 9, 61) - 0.5) * 0.5 + (noise(bx, by, 4, 62) - 0.5) * 0.25;
+  const wobble = (hash(bx, by, 63) - 0.5) * 0.3;
+  const v = clamp01((by * 2 + 1) / 122 + billow);
+  const q = clamp01(Math.round(v * levels + wobble) / levels);
+  const at = q * (OVERCAST_RAMP.length - 1);
+  const i = Math.min(OVERCAST_RAMP.length - 2, Math.floor(at));
+  const cloud = mix(rgb(pal[OVERCAST_RAMP[i]]), rgb(pal[OVERCAST_RAMP[i + 1]]), at - i);
+  return mix(cloud, skyColor(time, pal, x, y), OVERCAST_SKY_SHOW[time]);
+}
+
 type Clump = [x: number, y: number, r: number];
 
 /**
@@ -194,12 +216,15 @@ function farBuilding(p: Painter, x0: number, x1: number, roofTop: number, wallTo
   }
 }
 
-/** Sky, sun or moon, stars, the distant tree line and far buildings. */
-export function drawFar(pal: Palette, time: TimeOfDay) {
+/** Sky, sun or moon, stars, the distant tree line and far buildings; overcast when raining. */
+export function drawFar(pal: Palette, time: TimeOfDay, overcast = false) {
   const p = new Painter(W, H, pal);
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) p.setRGB(x, y, skyColor(time, pal, x, y));
+  const sky = overcast ? overcastColor : skyColor;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) p.setRGB(x, y, sky(time, pal, x, y));
 
-  if (time !== 'night') {
+  if (overcast) {
+    // The cloud deck hides the sun, moon and stars.
+  } else if (time !== 'night') {
     const sun = SUN[time];
     for (let y = sun.y - sun.r; y <= sun.y + sun.r; y++) {
       for (let x = sun.x - sun.r; x <= sun.x + sun.r; x++) {

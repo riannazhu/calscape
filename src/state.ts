@@ -30,7 +30,7 @@ const absent = (): ElementState => ({ present: false, muted: false, volume: DEFA
 
 export function initialState(): AppState {
   return {
-    elements: { rain: absent(), bird: absent(), bell: absent() },
+    elements: { rain: absent(), bird: absent(), bell: absent(), crickets: absent(), wind: absent() },
     time: timeForHour(new Date().getHours()),
     master: DEFAULT_MASTER,
     masterMuted: false,

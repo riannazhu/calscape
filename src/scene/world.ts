@@ -7,10 +7,12 @@ import {
   BIRD_IDLE,
   BIRD_SING,
   CAMPANILE,
+  CRICKET,
   DEER_GRAZE,
   DEER_WALK,
   RAIN_CLOUDS,
   SUNSET_WISPS,
+  WIND,
   WISPS,
   drawSprite,
   flipX,
@@ -25,6 +27,8 @@ const BIRD_FRAMES = {
 
 const BIRD_POS = { x: PERCH.x, y: PERCH.feetY - BIRD_IDLE.h + 1 };
 const BELL_POS = { x: 98, y: 20 };
+const CRICKET_POS = { x: 146, y: 142 };
+const WIND_POS = { x: 178, y: 54 };
 
 /** One rally of the spikeball: hand to net, net to the next player's hands. */
 const RALLY = [0, 1, 3, 2, 0, 3, 1];
@@ -48,6 +52,8 @@ interface Leaf {
   born: number;
   restY: number;
   sway: number;
+  /** Carried sideways by the breeze, px/s. */
+  drift: number;
 }
 
 interface Deer {
@@ -94,12 +100,12 @@ function alphaMask(c: HTMLCanvasElement) {
  * used for outlines and hit-testing. Lives outside React render state.
  */
 export class World {
-  present: Record<ElementId, boolean> = { rain: false, bird: false, bell: false };
+  present: Record<ElementId, boolean> = { rain: false, bird: false, bell: false, crickets: false, wind: false };
   time: TimeOfDay = 'day';
   reducedMotion = false;
   highlight: ElementId | null = null;
 
-  private layers = new Map<TimeOfDay, Layers>();
+  private layers = new Map<string, Layers>();
   private midMask: Uint8Array;
   private fgMask: Uint8Array;
   private birdSingUntil = 0;
@@ -140,12 +146,16 @@ export class World {
     return PALETTES[this.time];
   }
 
-  private getLayers(time: TimeOfDay): Layers {
-    let l = this.layers.get(time);
+  private getLayers(time: TimeOfDay, overcast = false): Layers {
+    const key = `${time}${overcast ? ':rain' : ''}`;
+    let l = this.layers.get(key);
     if (!l) {
       const pal = PALETTES[time];
-      l = { far: drawFar(pal, time), mid: drawMid(pal, time), fg: drawFg(pal) };
-      this.layers.set(time, l);
+      const clear = overcast ? this.getLayers(time) : null;
+      l = clear
+        ? { ...clear, far: drawFar(pal, time, true) }
+        : { far: drawFar(pal, time), mid: drawMid(pal, time), fg: drawFg(pal) };
+      this.layers.set(key, l);
     }
     return l;
   }
@@ -172,7 +182,16 @@ export class World {
         return RAIN_CLOUDS.map((c) => ({ ...c }));
       case 'bird':
         return [{ sprite: BIRD_IDLE, ...BIRD_POS }];
+      case 'crickets':
+        return [{ sprite: CRICKET[0], ...CRICKET_POS }];
+      case 'wind':
+        return [{ sprite: WIND, ...WIND_POS }];
     }
+  }
+
+  /** Canopies (and the bird on its branch) rock a pixel either way in the breeze. */
+  private sway(t: number) {
+    return this.present.wind ? Math.round(Math.sin(t * 0.9) * 0.8) : 0;
   }
 
   private place(now: number): Placed[] {
@@ -197,10 +216,21 @@ export class World {
         parts: [
           {
             sprite: frames[this.birdFacing],
-            x: BIRD_POS.x,
+            x: BIRD_POS.x + this.sway(t),
             y: BIRD_POS.y - (now < this.birdHopUntil ? 1 : 0),
           },
         ],
+      });
+    }
+    if (this.present.crickets) {
+      // Short bursts of wing-lifting, like a cricket mid-chirp.
+      const chirping = Math.sin(t * 1.3) > 0.3 && Math.floor(now / 160) % 2 === 0;
+      out.push({ id: 'crickets', parts: [{ sprite: CRICKET[chirping ? 1 : 0], ...CRICKET_POS }] });
+    }
+    if (this.present.wind) {
+      out.push({
+        id: 'wind',
+        parts: [{ sprite: WIND, x: WIND_POS.x + Math.round(Math.sin(t * 0.5) * 6), y: WIND_POS.y }],
       });
     }
     return out;
@@ -209,7 +239,7 @@ export class World {
   private occluded(id: ElementId, x: number, y: number) {
     if (x < 0 || y < 0 || x >= W || y >= H) return true;
     const i = y * W + x;
-    if (id === 'bird') return false;
+    if (id === 'bird' || id === 'crickets') return false;
     if (this.midMask[i] === 1 || this.fgMask[i] === 1) return true;
     return id === 'rain' && this.present.bell && opaque(CAMPANILE, x - BELL_POS.x, y - BELL_POS.y);
   }
@@ -224,7 +254,7 @@ export class World {
     const y = Math.floor(ly);
     for (let i = this.placedCache.length - 1; i >= 0; i--) {
       const p = this.placedCache[i];
-      const pad = p.id === 'bird' ? 2 : 0;
+      const pad = p.id === 'bird' || p.id === 'crickets' ? 2 : 0;
       for (let dy = -pad; dy <= pad; dy++) {
         for (let dx = -pad; dx <= pad; dx++) {
           if (this.mask(p, x + dx, y + dy)) return p.id;
@@ -246,8 +276,9 @@ export class World {
       }
       this.nextBirdMove = now + 9000 + this.rng() * 16000;
     }
+    const windy = this.present.wind;
     if (now > this.nextLeaf) {
-      if (this.nextLeaf > 0 && this.leaves.length < 2) {
+      if (this.nextLeaf > 0 && this.leaves.length < (windy ? 5 : 2)) {
         const left = this.rng() < 0.65;
         this.leaves.push({
           x: left ? 6 + this.rng() * 70 : 280 + this.rng() * 34,
@@ -255,9 +286,10 @@ export class World {
           born: now,
           restY: 142 + this.rng() * 30,
           sway: this.rng() * Math.PI * 2,
+          drift: windy ? 3 + this.rng() * 4 : 0,
         });
       }
-      this.nextLeaf = now + 12000 + this.rng() * 22000;
+      this.nextLeaf = now + (windy ? 2500 + this.rng() * 5000 : 12000 + this.rng() * 22000);
     }
     this.leaves = this.leaves.filter((l) => now - l.born < 40000);
   }
@@ -267,14 +299,14 @@ export class World {
     const pal = this.palette;
     const t = this.reducedMotion ? 0 : now / 1000;
     const night = this.time === 'night';
-    const { far, mid, fg } = this.getLayers(this.time);
+    const { far, mid, fg } = this.getLayers(this.time, this.present.rain);
     const placed = this.place(now);
     this.placedCache = placed;
     const get = (id: ElementId) => placed.find((p) => p.id === id);
 
     ctx.drawImage(far, 0, 0);
 
-    if (night && !this.reducedMotion) {
+    if (night && !this.present.rain && !this.reducedMotion) {
       STARS.forEach((s, i) => {
         if (i % TWINKLE_EVERY === 0 && Math.sin(t * 0.35 + i * 1.7) > 0.98) {
           ctx.fillStyle = hex(skyColor('night', pal, s.x, s.y));
@@ -294,20 +326,25 @@ export class World {
     const rain = get('rain');
     if (rain) for (const s of rain.parts) drawSprite(ctx, s.sprite, s.x, s.y, pal);
 
+    const wind = get('wind');
+    if (wind) for (const s of wind.parts) drawSprite(ctx, s.sprite, s.x, s.y, pal);
+
     const bell = get('bell');
     if (bell) for (const s of bell.parts) drawSprite(ctx, s.sprite, s.x, s.y, pal);
 
     ctx.drawImage(mid, 0, 0);
     if (night) this.drawDeer(ctx, pal, now);
     else if (this.time === 'day') this.drawBall(ctx, pal, t);
+    const crickets = get('crickets');
+    if (crickets) for (const s of crickets.parts) drawSprite(ctx, s.sprite, s.x, s.y, pal);
     if (rain) this.drawDrops(ctx, pal, t, rain.parts);
-    ctx.drawImage(fg, 0, 0);
+    ctx.drawImage(fg, this.sway(t), 0);
 
     ctx.fillStyle = pal.leafLight;
     for (const l of this.leaves) {
       const age = (now - l.born) / 1000;
       const y = Math.min(l.restY, l.y + age * 5);
-      const x = l.x + Math.sin(age * 1.3 + l.sway) * 3;
+      const x = l.x + Math.sin(age * 1.3 + l.sway) * 3 + Math.min(age, (l.restY - l.y) / 5) * l.drift;
       ctx.fillRect(Math.round(x), Math.round(y), 2, 1);
     }
 

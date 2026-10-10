@@ -7,10 +7,12 @@ const BELL_SAMPLE_URL = `${import.meta.env.BASE_URL}sounds/campanile.mp3`;
 /** The tower tolls the hour with strikes about 4 s apart. */
 const STRIKE_SPACING = 4;
 
-/** Keeps the default mix modest: rain as a bed, bird and bell as accents. */
-const BASE_LEVEL: Record<ElementId, number> = { rain: 0.55, bird: 0.22, bell: 0.4 };
-const PAN: Record<ElementId, number> = { rain: 0, bird: -0.55, bell: -0.35 };
-const REVERB_SEND: Record<ElementId, number> = { rain: 0, bird: 0.12, bell: 0.25 };
+/** Keeps the default mix modest: rain and breeze as beds, the rest as accents. */
+const BASE_LEVEL: Record<ElementId, number> = { rain: 0.55, bird: 0.22, bell: 0.4, crickets: 0.16, wind: 0.45 };
+const PAN: Record<ElementId, number> = { rain: 0, bird: -0.55, bell: -0.35, crickets: -0.05, wind: 0 };
+const REVERB_SEND: Record<ElementId, number> = { rain: 0, bird: 0.12, bell: 0.25, crickets: 0.1, wind: 0 };
+/** Elements that play a steady loop rather than scheduled events. */
+const LOOPED = new Set<ElementId>(['rain', 'crickets', 'wind']);
 
 type Source = AudioScheduledSourceNode;
 
@@ -72,6 +74,49 @@ function dropletLoop(ctx: AudioContext, seconds: number, perSecond: number): Aud
     }
     normalize(out);
   }
+  return buf;
+}
+
+/**
+ * A small chorus of field crickets. Each voice chirps in bursts of short
+ * pulses at its own pitch and rhythm; periods divide the loop evenly so it
+ * wraps without a hiccup, and a few chirps are skipped so it never sounds metric.
+ */
+function cricketLoop(ctx: AudioContext, seconds: number): AudioBuffer {
+  const sr = ctx.sampleRate;
+  const len = Math.floor(sr * seconds);
+  const buf = ctx.createBuffer(2, len, sr);
+  const left = buf.getChannelData(0);
+  const right = buf.getChannelData(1);
+  const voices = [
+    { freq: 4300, period: 0.62, amp: 1, pan: -0.4 },
+    { freq: 4650, period: 0.81, amp: 0.7, pan: 0.5 },
+    { freq: 3950, period: 1.07, amp: 0.5, pan: 0.1 },
+  ];
+  const pulse = Math.floor(sr * 0.016);
+  const gap = Math.floor(sr * 0.012);
+  for (const v of voices) {
+    const count = Math.round(seconds / v.period);
+    const step = len / count;
+    const offset = Math.random() * step;
+    for (let k = 0; k < count; k++) {
+      if (Math.random() < 0.15) continue;
+      const start = Math.floor(offset + k * step + (Math.random() - 0.5) * sr * 0.02);
+      const pulses = 3 + Math.floor(Math.random() * 2);
+      const amp = v.amp * (0.7 + Math.random() * 0.3);
+      for (let n = 0; n < pulses; n++) {
+        for (let i = 0; i < pulse; i++) {
+          const env = Math.sin((Math.PI * i) / pulse) ** 2;
+          const sample = amp * env * Math.sin((2 * Math.PI * v.freq * i) / sr);
+          const at = (((start + n * (pulse + gap) + i) % len) + len) % len;
+          left[at] += sample * (1 - v.pan) * 0.5;
+          right[at] += sample * (1 + v.pan) * 0.5;
+        }
+      }
+    }
+  }
+  normalize(left, 0.9);
+  normalize(right, 0.9);
   return buf;
 }
 
@@ -144,6 +189,8 @@ export class AudioEngine {
   private channels = new Map<ElementId, Channel>();
   private previews = new Map<ElementId, () => void>();
   private rainBuffers: { hiss: AudioBuffer; drops: AudioBuffer } | null = null;
+  private cricketBuffer: AudioBuffer | null = null;
+  private windBuffer: AudioBuffer | null = null;
   private bellSample: AudioBuffer | null = null;
   onChirp: ((ms: number) => void) | null = null;
 
@@ -202,7 +249,7 @@ export class AudioEngine {
       }
       if (ch) {
         const target = s.muted ? 0 : s.volume * BASE_LEVEL[id];
-        const tau = id === 'rain' && ch.gain.gain.value === 0 && !s.muted ? 0.4 : FADE;
+        const tau = LOOPED.has(id) && ch.gain.gain.value === 0 && !s.muted ? 0.4 : FADE;
         rampTo(ch.gain.gain, target, ctx, tau);
       }
     }
@@ -215,8 +262,8 @@ export class AudioEngine {
   preview(id: ElementId, volume: number, muted: boolean) {
     const ctx = this.ctx;
     if (!ctx) return;
-    // An unmuted rain loop already plays at the new level.
-    if (id === 'rain' && !muted) return;
+    // An unmuted loop already plays at the new level.
+    if (LOOPED.has(id) && !muted) return;
     this.previews.get(id)?.();
 
     const { gain, release } = this.output(id, ctx);
@@ -234,7 +281,7 @@ export class AudioEngine {
       env.gain.linearRampToValueAtTime(1, ctx.currentTime + 0.25);
       env.gain.setTargetAtTime(0, ctx.currentTime + 1.3, 0.15);
       env.connect(gain);
-      this.rainSources(ctx, env, sources);
+      this.loopSources(id, ctx, env, sources);
     }
 
     let done = false;
@@ -274,13 +321,92 @@ export class AudioEngine {
 
   private create(id: ElementId, ctx: AudioContext): Channel {
     switch (id) {
-      case 'rain':
-        return this.createRain(ctx);
       case 'bird':
         return this.createBird(ctx);
       case 'bell':
         return this.createBell(ctx);
+      case 'rain':
+      case 'crickets':
+      case 'wind':
+        return this.createLoop(id, ctx);
     }
+  }
+
+  private loopSources(id: ElementId, ctx: AudioContext, dest: AudioNode, sources: SourceSet) {
+    if (id === 'crickets') this.cricketSources(ctx, dest, sources);
+    else if (id === 'wind') this.windSources(ctx, dest, sources);
+    else this.rainSources(ctx, dest, sources);
+  }
+
+  private createLoop(id: ElementId, ctx: AudioContext): Channel {
+    const { gain, release } = this.output(id, ctx);
+    const sources = new SourceSet();
+    this.loopSources(id, ctx, gain, sources);
+    return { gain, stop: () => release(() => sources.stopAll()) };
+  }
+
+  private cricketSources(ctx: AudioContext, dest: AudioNode, sources: SourceSet) {
+    this.cricketBuffer ??= cricketLoop(ctx, 13.2);
+    const src = ctx.createBufferSource();
+    src.buffer = this.cricketBuffer;
+    src.loop = true;
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 2500;
+    src.connect(hp).connect(dest);
+    src.start(ctx.currentTime, Math.random() * 13);
+    sources.add(src);
+  }
+
+  /**
+   * Low wind with slow gusts: dark noise whose level and brightness drift on
+   * two unrelated slow LFOs, plus a faint leaf rustle that rises with each gust.
+   */
+  private windSources(ctx: AudioContext, dest: AudioNode, sources: SourceSet) {
+    this.windBuffer ??= seamlessNoise(ctx, 11.3, 0.05);
+    const air = ctx.createBufferSource();
+    air.buffer = this.windBuffer;
+    air.loop = true;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 700;
+    lp.Q.value = 0.6;
+    const gust = ctx.createGain();
+    gust.gain.value = 0.6;
+    air.connect(lp).connect(gust).connect(dest);
+
+    const rustle = ctx.createBufferSource();
+    this.rainBuffers ??= { hiss: seamlessNoise(ctx, 9.7, 0.35), drops: dropletLoop(ctx, 6.3, 70) };
+    rustle.buffer = this.rainBuffers.hiss;
+    rustle.loop = true;
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 3000;
+    const rustleGain = ctx.createGain();
+    rustleGain.gain.value = 0.05;
+    rustle.connect(hp).connect(rustleGain).connect(dest);
+
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 0.09;
+    const depth = ctx.createGain();
+    depth.gain.value = 0.35;
+    lfo.connect(depth).connect(gust.gain);
+    const rustleDepth = ctx.createGain();
+    rustleDepth.gain.value = 0.04;
+    lfo.connect(rustleDepth).connect(rustleGain.gain);
+
+    const tone = ctx.createOscillator();
+    tone.frequency.value = 0.053;
+    const sweep = ctx.createGain();
+    sweep.gain.value = 300;
+    tone.connect(sweep).connect(lp.frequency);
+
+    const at = ctx.currentTime;
+    air.start(at, Math.random() * 11);
+    rustle.start(at, Math.random() * 9);
+    lfo.start(at);
+    tone.start(at);
+    for (const s of [air, rustle, lfo, tone]) sources.add(s);
   }
 
   private rainSources(ctx: AudioContext, dest: AudioNode, sources: SourceSet) {
@@ -317,12 +443,6 @@ export class AudioEngine {
     sources.add(drops);
   }
 
-  private createRain(ctx: AudioContext): Channel {
-    const { gain, release } = this.output('rain', ctx);
-    const sources = new SourceSet();
-    this.rainSources(ctx, gain, sources);
-    return { gain, stop: () => release(() => sources.stopAll()) };
-  }
 
   /** Schedules one phrase of 2-4 chirps; returns its length in seconds. */
   private chirpPhrase(ctx: AudioContext, dest: AudioNode, sources: SourceSet): number {

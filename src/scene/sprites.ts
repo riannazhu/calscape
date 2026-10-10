@@ -261,6 +261,36 @@ export const BIRD_SING = fromRows(
   BIRD_LEGEND,
 );
 
+const CRICKET_LEGEND: Record<string, PaletteKey> = {
+  G: 'lawnLight',
+  g: 'lawnDark',
+  B: 'basket',
+  D: 'trunkDark',
+  A: 'trunkDark',
+  E: 'eye',
+};
+
+const CRICKET_GRASS = ['g..........G.', 'G.g.........G', 'GgG.......A.G', '.gG......A.gG'];
+
+/** A field cricket in a tuft of tall grass; the second frame lifts its wings to chirp. */
+export const CRICKET = [
+  fromRows([...CRICKET_GRASS, '.G..DD..A..G.', '.G.BBBBBBE.G.', 'gg.D.D.D.D.gg'], CRICKET_LEGEND),
+  fromRows([...CRICKET_GRASS, '.G.BB.D.A..G.', '.G.BBBBBBE.G.', 'gg.D.D.D.D.gg'], CRICKET_LEGEND),
+];
+
+/** A curl of wind drifting across the sky. */
+export const WIND = fromRows(
+  [
+    '................WWW.....',
+    '.WWWWWWWWWWWWWWW...W....',
+    '...............W.W..W...',
+    '....wwwwwwwwwww..WW.W...',
+    '...................W....',
+    '.......WWWWWWWWWWWW.....',
+  ],
+  { W: 'cloudLight', w: 'cloudMid' },
+);
+
 const DEER_LEGEND: Record<string, PaletteKey> = {
   B: 'deer',
   D: 'deerDark',

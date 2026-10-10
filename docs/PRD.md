@@ -15,7 +15,7 @@ Music is too distracting to study with. I want CalScape to play on the TV as a c
 | Include in MVP | Defer |
 | --- | --- |
 | One Glade scene facing Doe, with Campanile behind it on the left | Additional scenes and scene switching |
-| Rain cloud, bird, and Campanile bell elements | Storm, creek, chatter, and more elements |
+| Rain cloud, bird, Campanile bell, crickets, and breeze elements | Storm, creek, chatter, and more elements |
 | Add/remove, mute, and individual volume controls | Free dragging, multiple copies, and advanced placement |
 | Day/sunset/night visual switch; master volume; fullscreen | Automatic time transitions and Spotify integration |
 | Confirmation for periodic sounds; subtle animation; idle control hiding | Accounts and saved presets |
@@ -31,6 +31,8 @@ Three times of day share one composition:
 - **Day:** clear blue sky with the sun high on the right. Only a couple of Doe's windows are lit. People play spikeball, picnic, sit together, and read books (held open so the book reads clearly) on the open lawn.
 - **Sunset:** a blended periwinkle-to-lavender-to-pink-to-peach sky as in Figure 5, warmest around the low sun on the left, with more pink cloud streaks, lit from below, drifting noticeably faster than clouds at other times. The Glade has sunset activities: a picnic, a small guitar circle, a couple watching the sun go down, and someone lying in the grass.
 - **Night:** dark sky, moon, frequently twinkling stars, most of Doe's windows lit, and warm lamp glow in front of Doe. No people on the Glade; spotted does in warm brown tones rest there instead. They stand with heads up between short walks, sometimes lower their heads to graze, and each keeps its own unsynchronised rhythm.
+
+**Rain** changes the weather, not just the foreground: while rain is present, the clear sky gives way to a low, softly billowed cloud deck in each time of day's own cloud colours (grey by day, dusky mauve at sunset, deep blue at night), still stepped on the 2 × 2 grid. The sun, moon, stars and their glows are hidden behind it, and a light tint dims the whole scene. Removing the rain brings the clear sky back.
 
 Foreground trees frame the top corners. The left tree follows Figure 5: a thick trunk rising diagonally, a sturdy branch where the bird perches in open sky, leaves hanging below and to the right of it, and a light crown, with no branch tapering thin. The left canopy keeps clear space around the Campanile's spire.
 
@@ -69,7 +71,9 @@ All corner menus attach to the visible scene rectangle, not the browser window, 
 ### Sound behavior
 
 - Enable audio through an explicit user interaction. Continuous sounds start normally when added and need no separate preview. For periodic sounds, play one brief confirmation on add: adding the Campanile between hours plays one bell chime, then waits for the next hourly event. Respect mute and master-volume settings.
-- Rain loops beneath the cloud; birds chirp intermittently from the bird sprite. Campanile rings at the top of each hour on the user's local clock, striking the hour on a 12-hour clock (once at 1 PM, twice at 2 AM, twelve times at noon and midnight). The sound is a single isolated strike of the Great Bear Bell. This is app timing, not a promise to reproduce the campus bell schedule.
+- Rain loops beneath the cloud; birds chirp intermittently from the bird sprite.
+- Crickets: a cricket sits in a tuft of tall grass on the lawn and lifts its wings now and then. The sound is a soft chorus of three crickets chirping at different pitches and rhythms, looping seamlessly with occasional skipped chirps.
+- Breeze: a pixel wind curl drifts in the sky. While present, the tree canopies and the perched bird rock by a pixel, and leaves fall more often and drift sideways. The sound is low wind with slow gusts and a faint leaf rustle that rises with each gust. Campanile rings at the top of each hour on the user's local clock, striking the hour on a 12-hour clock (once at 1 PM, twice at 2 AM, twelve times at noon and midnight). The sound is a single isolated strike of the Great Bear Bell. This is app timing, not a promise to reproduce the campus bell schedule.
 - Master volume multiplies each element gain, preserving the mix. Final gain = master volume × element volume × mute state. Muting does not erase volume; increasing volume does not automatically unmute.
 - Use short fades on gain changes and stops to avoid clicks. Use seamless loops and modest default levels. Keep the sound mix unchanged when switching the time of day.
 
@@ -97,7 +101,7 @@ Proposed art starting point: a 320 × 180 logical scene with 16 × 16 tiles and 
 
 ### MVP acceptance checks
 
-- Add rain: its cloud appears and the rain loop starts. Mute: cloud and rain remain visible, audio stops. Remove: both disappear.
+- Add rain: its cloud appears, the sky turns overcast, and the rain loop starts. Mute: cloud and rain remain visible, audio stops. Remove: both disappear.
 - Hover a sprite and move onto its bar: outline is clear and controls remain usable. Clicking empty space closes them.
 - Change master volume: relative element levels stay proportional. Switch the time of day: audio does not restart or change.
 - Remove and re-add repeatedly: no duplicate loops or leaked timers. Removing the Campanile removes its tower sprite and stops its sound and timers. Adding it plays one confirmation chime; enabled bells then fire once per hour.

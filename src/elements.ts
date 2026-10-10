@@ -1,4 +1,4 @@
-export type ElementId = 'rain' | 'bird' | 'bell';
+export type ElementId = 'rain' | 'bird' | 'bell' | 'crickets' | 'wind';
 
 export interface ElementState {
   present: boolean;
@@ -19,6 +19,8 @@ export interface ElementDef {
 /** Bottom of the stack first; hit-testing walks this list in reverse. */
 export const ELEMENTS: ElementDef[] = [
   { id: 'bell', name: 'Campanile bell', bar: { x: 116, y: 36, place: 'right' } },
+  { id: 'crickets', name: 'Crickets', bar: { x: 152, y: 140, place: 'above' } },
+  { id: 'wind', name: 'Breeze', bar: { x: 190, y: 62, place: 'below' } },
   { id: 'rain', name: 'Rain', bar: { x: 141, y: 30, place: 'below' } },
   { id: 'bird', name: 'Bird', bar: { x: 49, y: 37, place: 'right' } },
 ];
@@ -29,7 +31,7 @@ export const ELEMENT_BY_ID = Object.fromEntries(ELEMENTS.map((e) => [e.id, e])) 
 >;
 
 /** Inventory order. */
-export const INVENTORY: ElementId[] = ['rain', 'bird', 'bell'];
+export const INVENTORY: ElementId[] = ['rain', 'bird', 'bell', 'crickets', 'wind'];
 
 export const VOLUME_STEPS = 6;
 export const DEFAULT_VOLUME = 4 / VOLUME_STEPS;

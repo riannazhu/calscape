@@ -136,6 +136,18 @@ export const EXIT_FULLSCREEN = [
   '..#...#..',
 ];
 
+export const WIND_TILE = fromRows(
+  [
+    '........WW..',
+    'WWWWWWWW..W.',
+    '.......W.W.W',
+    '..wwww..WW.W',
+    '...........W',
+    '....WWWWWWW.',
+  ],
+  { W: 'cloudLight', w: 'cloudMid' },
+);
+
 export const CLOUD_TILE = fromRows(
   [
     '....LLL......',

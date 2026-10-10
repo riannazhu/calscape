@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type Dispatch } from 'react';
 import { ELEMENT_BY_ID, INVENTORY, MASTER_STEPS } from '../elements';
-import { BIRD_IDLE } from '../scene/sprites';
+import { BIRD_IDLE, CRICKET } from '../scene/sprites';
 import type { Action, AppState } from '../state';
 import { Icon, SpriteArt } from './PixelArt';
 import {
@@ -13,10 +13,11 @@ import {
   SPEAKER_MUTED,
   SUN,
   SUNSET,
+  WIND_TILE,
 } from './icons';
 import type { TimeOfDay } from '../scene/palette';
 
-const TILE_ART = { rain: CLOUD_TILE, bird: BIRD_IDLE, bell: BELL_TILE };
+const TILE_ART = { rain: CLOUD_TILE, bird: BIRD_IDLE, bell: BELL_TILE, crickets: CRICKET[0], wind: WIND_TILE };
 
 const TIMES: { time: TimeOfDay; label: string; icon: string[] }[] = [
   { time: 'day', label: 'Day', icon: SUN },
