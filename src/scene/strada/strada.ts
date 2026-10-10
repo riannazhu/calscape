@@ -11,6 +11,7 @@ import {
   PATH,
   STARS,
   drawFar,
+  drawBulbs,
   drawGlow,
   drawLaptopGlow,
   drawLeaves,
@@ -52,6 +53,8 @@ interface Layers {
   far: HTMLCanvasElement;
   mid: HTMLCanvasElement;
   leaves: HTMLCanvasElement;
+  /** The string-light bulbs, laid back over leaves a gust has shoved across them. */
+  bulbs: HTMLCanvasElement;
   /** Lamp and bulb halos, laid over everything after dark. */
   glow: HTMLCanvasElement | null;
   /** The typist's screen light, laid over him while he is there after dark. */
@@ -200,6 +203,7 @@ export class Strada extends Stage<StradaKey> {
             far: drawFar(pal, time),
             mid: drawMid(pal),
             leaves: drawLeaves(pal),
+            bulbs: drawBulbs(pal),
             glow: drawGlow(pal, time),
             laptopGlow: drawLaptopGlow(pal, time),
           };
@@ -452,7 +456,7 @@ export class Strada extends Stage<StradaKey> {
     const pal = PALETTES[this.time];
     const t = this.reducedMotion ? 0 : now / 1000;
     const night = this.time === 'night';
-    const { far, mid, leaves, glow, laptopGlow } = this.getLayers(this.time, !!this.present.rain);
+    const { far, mid, leaves, bulbs, glow, laptopGlow } = this.getLayers(this.time, !!this.present.rain);
     const placed = this.place(now);
     this.placedCache = placed;
     const get = (id: ElementId) => placed.find((p) => p.id === id);
@@ -473,7 +477,7 @@ export class Strada extends Stage<StradaKey> {
     this.drawRiders(ctx, pal);
     ctx.drawImage(mid, 0, 0);
     this.drawPatrons(ctx, mid);
-    this.drawWind(ctx, pal, leaves, now);
+    this.drawWind(ctx, pal, leaves, bulbs, now);
     this.drawBanner(ctx, pal, now);
     for (const id of ['chatter', 'typing'] as const) {
       const p = get(id);
@@ -498,7 +502,13 @@ export class Strada extends Stage<StradaKey> {
    * it blows and flicker back, and the crown's edges toss against the sky;
    * torn-off leaves drift along with it.
    */
-  private drawWind(ctx: CanvasRenderingContext2D, pal: Palette<StradaKey>, leaves: HTMLCanvasElement, now: number) {
+  private drawWind(
+    ctx: CanvasRenderingContext2D,
+    pal: Palette<StradaKey>,
+    leaves: HTMLCanvasElement,
+    bulbs: HTMLCanvasElement,
+    now: number,
+  ) {
     if (this.reducedMotion) return;
     const t = now / 1000;
     for (const p of this.puffs) {
@@ -528,6 +538,7 @@ export class Strada extends Stage<StradaKey> {
         }
       }
     }
+    if (this.puffs.length) ctx.drawImage(bulbs, 0, 0);
     for (const l of this.flying) {
       ctx.fillStyle = pal[l.key];
       const tumble = Math.floor((now - l.born) / 140) % 2;

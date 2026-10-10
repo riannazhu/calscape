@@ -29,6 +29,21 @@ const leafy = (code: number) => {
 };
 
 /**
+ * Around each string-light bulb. Their pale yellows pass for leaves by colour,
+ * so the wind leaves these pixels alone and redraws them over shoved leaves.
+ */
+const BULB = new Uint8Array(W * H);
+for (const [lx, ly, r] of LIGHTS) {
+  if (r > 2) continue;
+  const reach = r + 2.5;
+  for (let y = Math.floor(ly - reach); y <= ly + reach; y++) {
+    for (let x = Math.floor(lx - reach); x <= lx + reach; x++) {
+      if (x >= 0 && y >= 0 && x < W && y < H && Math.hypot(x - lx, y - ly) <= reach) BULB[y * W + x] = 1;
+    }
+  }
+}
+
+/**
  * Where the canopy meets open sky: each entry is a pixel that a gust can
  * flip to its neighbour's colour, so leaves seem to toss along the edges.
  * `leaf` entries are sky pixels a leaf can sway into; the rest are leaf
@@ -37,9 +52,11 @@ const leafy = (code: number) => {
 export const LEAF_EDGES: { x: number; y: number; code: number; leaf: boolean }[] = [];
 for (let y = 1; y < 100; y++) {
   for (let x = 1; x < W - 1; x++) {
+    if (BULB[y * W + x]) continue;
     const here = CODES[y * W + x];
     const sky = KINDS[here] === SKY;
     for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1]] as const) {
+      if (BULB[(y + dy) * W + x + dx]) continue;
       const there = CODES[(y + dy) * W + x + dx];
       const otherSky = KINDS[there] === SKY;
       if (sky && !otherSky && leafy(there)) {
@@ -99,7 +116,11 @@ export function drawMid(pal: Pal) {
 /** The canopy's leaves on their own, so a gust can push them a pixel without moving the trunks or lights. */
 export const CANOPY_BOTTOM = 104;
 export function drawLeaves(pal: Pal) {
-  return paint(pal, (x, y) => y < CANOPY_BOTTOM && kindAt(x, y) === 0 && leafy(CODES[y * W + x])).toCanvas();
+  return paint(pal, (x, y) => y < CANOPY_BOTTOM && !BULB[y * W + x] && kindAt(x, y) === 0 && leafy(CODES[y * W + x])).toCanvas();
+}
+
+export function drawBulbs(pal: Pal) {
+  return paint(pal, (x, y) => !!BULB[y * W + x] && kindAt(x, y) !== SKY).toCanvas();
 }
 
 /** The two heaters' burners under their caps: [x, y, halo radius]. */

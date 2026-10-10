@@ -176,5 +176,6 @@ licenses as their sources.
   volume, the time of day (day, sunset or night) and master volume.
 - `src/ui/` — inventory, corner controls, anchored element bar and pixel icons.
 - `src/audio/sounds/` — audio recordings, credited above.
+- `public/` — the favicon (the CalScape bear) as SVG and PNG, plus the home-screen icon.
 - `docs/PRD.md` — product requirements, kept in step with the app.
 - `docs/screenshots/` — the images in this README.
