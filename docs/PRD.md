@@ -136,7 +136,7 @@ Use a fixed camera with slow cloud movement, sparse bird motion, gentle rain pix
 
 ### Implementation
 
-Use React and TypeScript for application state and accessible controls, plus the Web Audio API for playback and mixing. The app needs no backend.
+Use React and TypeScript for application state and accessible controls, plus the Web Audio API for playback and mixing. The app needs no backend. When deployed on Vercel, Vercel Speed Insights reports page performance; it does nothing locally.
 
 Keep the base scene separate from transparent element sprites and animation layers. The Campanile tower is a removable element sprite, just like the cloud and bird; do not bake it into the backdrop. Store each element's presence, mute flag, volume, and fixed position. Keep audio nodes separate from render state so rerenders cannot start duplicate loops. Use matching sprite masks for silhouette outlines and accurate hit areas.
 
