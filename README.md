@@ -10,7 +10,7 @@ The lawn facing Doe Library, with the Campanile behind it on the left.
 
 | Day | Sunset |
 | --- | --- |
-| ![Day: clear sky, people on the lawn, songbird and squirrel on the branch](docs/screenshots/glade-day.png) | ![Sunset: pastel sky, guitar circle and picnic, mourning dove on the branch](docs/screenshots/glade-sunset.png) |
+| ![Day: clear sky, people on the lawn, songbird, and squirrel on the branch](docs/screenshots/glade-day.png) | ![Sunset: pastel sky, guitar circle and picnic, mourning dove on the branch](docs/screenshots/glade-sunset.png) |
 | **Night** | **Rain** |
 | ![Night: stars, moon, lit windows, deer on the lawn, owl on the branch, cricket on the grass](docs/screenshots/glade-night.png) | ![Rain by day: overcast cloud deck replaces the sun and blue sky](docs/screenshots/glade-rain.png) |
 
@@ -22,9 +22,7 @@ The lawn facing Doe Library, with the Campanile behind it on the left.
 
 ## Caffè Strada
 
-The patio of Caffè Strada at College and Bancroft, under the plum trees and
-string lights, with a Cal banner on the street lamp and the campus plaza
-beyond.
+The patio of Caffè Strada at College and Bancroft, under the plum trees and string lights, with a Cal banner on the street lamp and the campus plaza beyond.
 
 | Day | Sunset | Night |
 | --- | --- | --- |
@@ -38,8 +36,7 @@ beyond.
 
 ## Berkeley Marina
 
-The grassy shore beside the Berkeley Marina pier, looking west across the bay
-to San Francisco and the Golden Gate Bridge.
+The grassy shore beside the Berkeley Marina pier, looking west across the bay to San Francisco and the Golden Gate Bridge.
 
 | Day | Sunset | Night |
 | --- | --- | --- |
@@ -51,7 +48,7 @@ to San Francisco and the Golden Gate Bridge.
 | Sunset | Waves, foghorn, Canada geese, sea lions |
 | Night | Waves, foghorn, black-crowned night heron, sea lions |
 
-## Running
+## Local Setup
 
 ```sh
 npm install
@@ -59,79 +56,38 @@ npm run dev      # http://localhost:5173
 npm run build    # static build in dist/, no backend needed
 ```
 
-## Using it
+## Instructions
 
-- **Top right:** three scene icons: a pine for the Glade,
-  a coffee cup for Caffè Strada and a sailboat for the Marina. Each scene keeps
-  its own elements, mute and volume while you're elsewhere. Switching fades
-  out the old scene's sounds; rain and crickets carry on without restarting
-  if they're also added in the new scene.
-- **Inventory (bottom centre):** the four elements for the current scene and
-  time of day. Click a tile to add that element to the scene; click it again
-  to remove it. Tiles for elements in the scene are outlined in blue.
-- **Scene objects:** hover a sprite to outline it and show its control bar
-  (mute, volume down, eight-step level, volume up, remove). Elements start at
-  the middle step and go up to twice that. Changing the volume plays a
-  short sample at the new level. Click to pin the bar; click elsewhere or press
-  Escape to close it. On touch, tap the sprite.
-- **Keyboard:** Tab to a sprite, press Enter to open its controls.
-- **Bottom left:** sun, sunset and moon tiles switch the time of day. Elements
-  offered at both times keep playing; the others fade out and come back,
-  with their mute and volume, when you switch back.
-- **Bottom right:** click the speaker to mute everything, the blocks to set the
-  master volume (click, drag or arrow keys), and the corner tile for fullscreen.
-- Controls fade out after five seconds of inactivity; move the pointer or press
-  a key to bring them back.
+- **Scene (top right):** 3 icons: a pine for the Glade, a coffee cup for Caffè Strada and a sailboat for the Marina. Each scene keeps its own elements, mute, and volume while you're elsewhere. Switching fades out the old scene's sounds; rain and crickets carry on without restarting if they're also added in the new scene.
+- **Inventory (bottom centre):** the 4 elements for the current scene and time of day. Click a tile to add that element to the scene and click it again to remove it. Tiles for elements in the scene are outlined in blue.
+- **Scene objects:** hover a sprite to outline it and show its control bar (mute, volume down, 8-step level, volume up, remove). Elements start at the middle step and go up to twice that. Changing the volume plays a short sample at the new level. Click to pin the bar; click elsewhere or press Escape to close it. On touch, tap the sprite.
+- **Keyboard:** Tab to a sprite, Enter to open its controls.
+- **Bottom left:** sun, sunset and moon tiles switch the time of day. Elements offered at both times keep playing; the others fade out and come back, with their mute and volume, when you switch back.
+- **Bottom right:** click the speaker to mute everything, the blocks to set the master volume (click, drag or arrow keys), and the corner tile for fullscreen.
+- Controls fade out after 5 seconds of inactivity; move the pointer or press a key to bring them back.
 
-Adding an animal plays its call straight away, then it calls every so often.
-The Campanile chimes once when added, then tolls the hour on your computer's
-clock at the top of every hour: once at 1 o'clock, twice at 2, up to twelve
-times at noon and midnight, with strikes 4 seconds apart.
+Adding an animal plays its call straight away, then it calls every so often. The Campanile chimes once when added, then tolls the hour on your computer's
+clock at the top of every hour: once at 1:00, twice at 2:00, up to 12 times at noon and midnight, with strikes 4 seconds apart.
 
 ## Sounds
 
-Every sound is kept ambient: quiet defaults, even beds and rare calls.
+Every sound is kept ambient.
 
-Rain, breeze, crickets, the songbirds and the squirrel are synthesised in the
-browser by `src/audio/engine.ts`. The cricket chorus is periodic like a real
-field: a few nearby crickets chirp on steady beats over fainter distant ones.
-One scrub jay sits on the branch, but the songbird sound is a loose,
-background chorus of about six birds around the Glade, each with its own song
-(a warble, a trill or slurred whistles) and stereo position. Most are
-distant, so they're quieter and softer; the perched bird is the nearest and
-sings once per chorus.
+Rain, breeze, crickets, the songbirds and the squirrel are synthesised in the browser by `src/audio/engine.ts`. The cricket chorus is periodic like a real field: a few nearby crickets chirp on steady beats over fainter distant ones. 1 scrub jay sits on the branch, but the songbird sound is a loose, background chorus of about 6 birds around the Glade, each with its own song (a warble, a trill or slurred whistles) and stereo position. Most are distant, so they're quieter and softer; the perched bird is the nearest and sings once per chorus.
 
-Every element starts at four of eight bars. Each sound's full gain is tuned
-so four bars sits at a comfortable ambient level for it.
+Every element starts at 4/8 bars. Each sound's full gain is tuned so 4 bars sits at a comfortable ambient level for it.
 
-The bell, `src/audio/sounds/campanile.mp3`, is a single strike isolated from a
-recording of the Campanile: only the bell's partials are kept, so traffic and
-footsteps are removed, and the ring-out is extended from the partials' own
-decay. If the file fails to load, a synthesised bell tuned to the Great Bear
-Bell's low G plays instead.
+The bell, `src/audio/sounds/campanile.mp3`, is a single strike isolated from a recording of the Campanile: only the bell's partials are kept, so traffic and
+footsteps are removed, and the ring-out is extended from the partials' own decay. If the file fails to load, a synthesised bell tuned to the Great Bear Bell's low G plays instead.
 
-The mourning dove, `src/audio/sounds/dove.mp3`, is one perch-coo cut from
-"Zenaida macroura - Mourning Dove" (xeno-canto XC128006) by Jonathon Jongsma,
-licensed [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/), via
-[Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Zenaida_macroura_-_Mourning_Dove_XC128006.ogg).
+The mourning dove, `src/audio/sounds/dove.mp3`, is a perch-coo cut from "Zenaida macroura - Mourning Dove" (xeno-canto XC128006) by Jonathon Jongsma, licensed [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/), via [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Zenaida_macroura_-_Mourning_Dove_XC128006.ogg).
 
-The great horned owl, `src/audio/sounds/owl.mp3`, is one "hoo, hoo-hoo, hoo"
-from "Bubo virginianus - Great Horned Owl" (xeno-canto XC450919) by Michael &
-Katie LaTour, licensed [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/), via
-[Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Bubo_virginianus_-_Great_Horned_Owl_XC450919.mp3).
+The great horned owl, `src/audio/sounds/owl.mp3`, is from "Bubo virginianus - Great Horned Owl" (xeno-canto XC450919) by Michael & Katie LaTour, licensed [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/), via [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Bubo_virginianus_-_Great_Horned_Owl_XC450919.mp3).
 
-Both calls are nearly pure tones, so the background is removed by tracking
-each note's pitch and keeping only that pitch and its harmonics; the gaps
-between notes are silent. The adapted clips are shared under the same
-licenses as their sources. The dove and owl fall back to synthesised calls if
-their files fail to load.
+Both calls are nearly pure tones, so the background is removed by tracking each note's pitch and keeping only that pitch and its harmonics; the gaps
+between notes are silent. The adapted clips are shared under the same licenses as their sources. The dove and owl fall back to synthesised calls if their files fail to load.
 
-The Caffè Strada and Marina sounds are recordings (apart from the
-synthesised cup clinks over the café chatter), cleaned the same way:
-band-limited to the useful range, with steady background noise gated out,
-trimmed to single calls, levelled, and faded in and out. Loops have their end
-crossfaded into their start so they repeat without a seam. These elements
-have no synthesised stand-in and stay silent if their file fails to load.
+The Caffè Strada and Marina sounds are recordings (apart from the synthesised cup clinks over the café chatter), cleaned the same way: band-limited to the useful range, with steady background noise gated out, trimmed to single calls, leveled, and faded in and out. Loops have their end crossfaded into their start so they repeat without a seam. These elements have no synthesised stand-in and stay silent if their file fails to load.
 
 | File | Source | Author | License |
 | --- | --- | --- | --- |
@@ -146,26 +102,19 @@ have no synthesised stand-in and stay silent if their file fails to load.
 | `heron.mp3` | [Black-crowned Night Heron, xeno-canto XC481741](https://commons.wikimedia.org/wiki/File:Nycticorax_nycticorax_-_Black-crowned_Night_Heron_XC481741.mp3) | Jens Loose | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
 | `sealions.mp3` | [California Sea Lion at Noyo Harbor](https://commons.wikimedia.org/wiki/File:California_Sea_Lion_at_Noyo_Harbor_-_October_2022_-_Sarah_Stierch.webm) | Sarah Stierch | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 
-Clips adapted from CC BY and CC BY-SA sources are shared under the same
-licenses as their sources.
+Clips adapted from CC BY and CC BY-SA sources are shared under the same licenses as their sources.
 
 ## Layout
 
-- `src/scenes.ts` — the scene registry: each scene's elements and their
-  control-bar anchors, inventory per time of day, tile art and page colours.
-- `src/scene/glade/`, `src/scene/strada/`, `src/scene/marina/` — one folder per
-  scene: its palette, sprites, backdrop layers and the `Stage` subclass that
+- `src/scenes.ts` — the scene registry: each scene's elements and their control-bar anchors, inventory per time of day, tile art and page colours.
+- `src/scene/glade/`, `src/scene/strada/`, `src/scene/marina/` — 1 folder per scene: its palette, sprites, backdrop layers and the `Stage` subclass that
   animates and draws it.
-- `src/scene/` — what the scenes share on the 320×180 logical canvas: `Stage`
-  (silhouette masks for outlines and hit-testing), palettes and relighting,
-  stepped skies, the pixel painter, sprites, foliage and people. The scene
-  scales to cover the window, cropping at most 20% of either axis.
-- `src/audio/engine.ts` — Web Audio engine; `sync()` is idempotent so React
-  rerenders cannot start duplicate loops. Editing it reloads the page, since
+- `src/scene/` — what the scenes share on the 320×180 logical canvas: `Stage` (silhouette masks for outlines and hit-testing), palettes and relighting,
+  stepped skies, the pixel painter, sprites, foliage and people. The scene scales to cover the window, cropping at most 20% of either axis.
+- `src/audio/engine.ts` — Web Audio engine; `sync()` is idempotent so React rerenders cannot start duplicate loops. Editing it reloads the page, since
   hot reload would otherwise keep the old engine running.
 - `src/elements.ts` — element ids, per-element state and volume steps.
-- `src/state.ts` — the current scene, each scene's element presence, mute and
-  volume, the time of day (day, sunset or night) and master volume.
+- `src/state.ts` — the current scene, each scene's element presence, mute and volume, the time of day (day, sunset or night) and master volume.
 - `src/ui/` — inventory, corner controls, anchored element bar and pixel icons.
 - `src/audio/sounds/` — audio recordings, credited above.
 - `public/` — the favicon (the CalScape bear) as SVG and PNG, plus the home-screen icon.
