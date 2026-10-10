@@ -60,8 +60,8 @@ interface Deer {
   walking: boolean;
   since: number;
   until: number;
-  /** How long this pause starts with the head up. */
-  lookup: number;
+  /** Grazing starts this long into a pause; Infinity keeps the deer standing. */
+  grazeAfter: number;
   /** Offsets the walk cycle so no two deer step in time. */
   phase: number;
 }
@@ -124,9 +124,9 @@ export class World {
   private placedCache: Placed[] = [];
   /** Deer wander the Glade at night, each within its own stretch of lawn. */
   private deer: Deer[] = [
-    { x: 40, y: 147, min: 12, max: 150, dir: 1, walking: false, since: -1e5, until: 0, lookup: 0, phase: 0 },
-    { x: 130, y: 153, min: 60, max: 210, dir: -1, walking: false, since: -1e5, until: 0, lookup: 0, phase: 0 },
-    { x: 268, y: 149, min: 180, max: 300, dir: -1, walking: false, since: -1e5, until: 0, lookup: 0, phase: 0 },
+    { x: 40, y: 147, min: 12, max: 150, dir: 1, walking: false, since: 0, until: 0, grazeAfter: Infinity, phase: 0 },
+    { x: 130, y: 153, min: 60, max: 210, dir: -1, walking: false, since: 0, until: 0, grazeAfter: Infinity, phase: 0 },
+    { x: 268, y: 149, min: 180, max: 300, dir: -1, walking: false, since: 0, until: 0, grazeAfter: Infinity, phase: 0 },
   ];
   private lastDeer = 0;
 
@@ -345,7 +345,7 @@ export class World {
     ctx.fillRect(Math.round(x), Math.round(y), 1, 1);
   }
 
-  /** Deer amble a few steps, stop, look up, then graze. */
+  /** Deer amble a few steps, then stand a while; some pauses end in grazing. */
   private drawDeer(ctx: CanvasRenderingContext2D, pal: Palette, now: number) {
     const dt = this.lastDeer ? Math.min(0.1, (now - this.lastDeer) / 1000) : 0;
     this.lastDeer = now;
@@ -360,7 +360,7 @@ export class World {
           d.walking = !d.walking;
           d.since = now;
           d.until = now + (d.walking ? 2000 + this.rng() * 3500 : 12000 + this.rng() * 26000);
-          d.lookup = this.rng() < 0.6 ? 800 + this.rng() * 2600 : 0;
+          d.grazeAfter = this.rng() < 0.35 ? 4000 + this.rng() * 8000 : Infinity;
           if (d.walking && this.rng() < 0.4) d.dir = d.dir === 1 ? -1 : 1;
         }
         if (d.walking) {
@@ -373,9 +373,9 @@ export class World {
       }
       const facing = d.dir === 1 ? 0 : 1;
       const walk = DEER_FRAMES.walk[facing];
-      let sprite = DEER_FRAMES.graze[facing];
+      let sprite = walk[0];
       if (d.walking && !this.reducedMotion) sprite = walk[Math.floor((now + d.phase) / 280) % 2];
-      else if (now - d.since < d.lookup) sprite = walk[0];
+      else if (now - d.since > d.grazeAfter) sprite = DEER_FRAMES.graze[facing];
       drawSprite(ctx, sprite, Math.round(d.x - sprite.w / 2), d.y - sprite.h + 1, pal);
     }
   }

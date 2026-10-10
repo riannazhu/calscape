@@ -24,13 +24,13 @@ Music is too distracting to study with. I want CalScape to play on the TV as a c
 
 Use a smaller, tile-like world with obvious square pixels, a restrained palette, simple foliage, and broad areas of lawn and sky. Avoid photographic textures, dense grass detail, and a highly rendered illustration. The attached mockups guide composition and controls; their backdrop detail should be reduced.
 
-Everything stays on the pixel grid, including the sky and light. Sky gradients are drawn as solid colour steps on 2 × 2 pixel blocks, never smooth per-pixel blending or checkerboard dithering. Step edges wobble gently so bands read as natural rather than ruled, and they follow the light: at sunset they arc around the low sun, by day they tilt slightly toward it. Glows around the moon and street lamps are a few concentric stepped rings on the same block grid; stars have no halo, and the midday sun has only a faint stepped rim.
+Everything stays on the pixel grid, including the sky and light. Sky gradients are drawn as solid colour steps on 2 × 2 pixel blocks, never smooth per-pixel blending or checkerboard dithering. Step edges wobble gently so bands read as natural rather than ruled, and they follow the light: at sunset they arc around the low sun, by day they tilt slightly toward it. Glows around the moon and street lamps are a few concentric stepped rings on the same block grid; stars have no halo, and the sun has a subtle stepped glow at midday and sunset.
 
 Three times of day share one composition:
 
-- **Day:** clear blue sky with the sun high on the right. Doe's windows and the street lamps are off. People play spikeball, picnic, sit together, and read books (held open so the book reads clearly) on the open lawn.
+- **Day:** clear blue sky with the sun high on the right. Only a couple of Doe's windows are lit. People play spikeball, picnic, sit together, and read books (held open so the book reads clearly) on the open lawn.
 - **Sunset:** a blended periwinkle-to-lavender-to-pink-to-peach sky as in Figure 5, warmest around the low sun on the left, with more pink cloud streaks, lit from below, drifting noticeably faster than clouds at other times. The Glade has sunset activities: a picnic, a small guitar circle, a couple watching the sun go down, and someone lying in the grass.
-- **Night:** dark sky, moon, frequently twinkling stars, every Doe window lit, and warm lamp glow in front of Doe. No people on the Glade; spotted does in warm brown tones graze there instead, each on its own unsynchronised rhythm of grazing, looking up and occasionally wandering.
+- **Night:** dark sky, moon, frequently twinkling stars, most of Doe's windows lit, and warm lamp glow in front of Doe. No people on the Glade; spotted does in warm brown tones rest there instead. They stand with heads up between short walks, sometimes lower their heads to graze, and each keeps its own unsynchronised rhythm.
 
 Foreground trees frame the top corners. The left tree follows Figure 5: a thick trunk rising diagonally, a sturdy branch where the bird perches in open sky, leaves hanging below and to the right of it, and a light crown, with no branch tapering thin. The left canopy keeps clear space around the Campanile's spire.
 
@@ -41,7 +41,7 @@ Face Doe from the Glade at lawn level. Doe must read as a long pale facade with 
 | Region | Required behavior |
 | --- | --- |
 | Bottom left | Sun, sunset and moon tiles switch between day, sunset and night. At night the Glade has deer instead of people. Preserve all audio settings and playback. |
-| Bottom center | Pixel inventory with element sprites and an add tile. Select an absent element to add it at a predefined scene position. Mark present elements without duplicating them. |
+| Bottom center | Pixel inventory with one tile per element sprite, and no separate add tile. Select an absent element to add it at a predefined scene position. Mark present elements without duplicating them. |
 | Bottom right | Master volume control and adjacent fullscreen tile, matching the nighttime Glade, café, and marina suite. Prefer the shown pixel volume blocks; retain smooth gain internally. |
 | Scene objects | Hover gives the physical sprite a clear outline and shows its anchored volume adjustment bar. |
 | Top corners | Small CalScape label with a pixel bear, and the scene name with a pixel tree. A clock can be added later if useful. |

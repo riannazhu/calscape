@@ -4,7 +4,6 @@ import { BIRD_IDLE } from '../scene/sprites';
 import type { Action, AppState } from '../state';
 import { Icon, SpriteArt } from './PixelArt';
 import {
-  ADD,
   BELL_TILE,
   CLOUD_TILE,
   EXIT_FULLSCREEN,
@@ -31,8 +30,6 @@ interface Props {
 }
 
 export function BottomControls({ state, dispatch }: Props) {
-  const nextAbsent = INVENTORY.find((id) => !state.elements[id].present);
-
   return (
     <>
       <div className="chrome bottom-left panel" role="group" aria-label="Time of day">
@@ -65,14 +62,6 @@ export function BottomControls({ state, dispatch }: Props) {
             </button>
           );
         })}
-        <button
-          className="tile inventory add"
-          aria-label={nextAbsent ? `Add ${ELEMENT_BY_ID[nextAbsent].name}` : 'All elements added'}
-          aria-disabled={!nextAbsent}
-          onClick={() => nextAbsent && dispatch({ type: 'add', id: nextAbsent })}
-        >
-          <Icon rows={ADD} />
-        </button>
       </div>
 
       <div className="chrome bottom-right">

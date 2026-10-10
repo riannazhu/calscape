@@ -13,7 +13,7 @@ export const SUN: Record<'day' | 'sunset', { x: number; y: number; r: number }> 
 export const MOON = { x: 252, y: 24 };
 
 /** The bird perches on the top-left branch with its feet on this row. */
-export const PERCH = { x: 21, feetY: 45 };
+export const PERCH = { x: 36, feetY: 42 };
 
 /** Top row of the lawn: a gentle rise that crests in front of Doe. */
 export const lawnTop = (x: number) => Math.round(131 + 12 * ((x - 175) / 175) ** 2);
@@ -43,13 +43,14 @@ function skyField(time: TimeOfDay, x: number, y: number) {
   return clamp01(0.4 * v + 0.6 * (1 - Math.hypot(x - sun.x, (y - sun.y) * 1.5) / 300));
 }
 
-/** Stepped rings of light: a soft wash around the moon, a faint rim on the midday sun. */
+/** Stepped rings of light: a soft wash around the moon, a subtle glow around the sun. */
 const SKY_GLOWS: Partial<Record<TimeOfDay, { x: number; y: number; r: number; a: number; steps: number }[]>> = {
   night: [
     { x: MOON.x, y: MOON.y, r: 40, a: 0.35, steps: 4 },
     { x: MOON.x, y: MOON.y, r: 14, a: 0.45, steps: 2 },
   ],
-  day: [{ x: SUN.day.x, y: SUN.day.y, r: 13, a: 0.3, steps: 2 }],
+  day: [{ x: SUN.day.x, y: SUN.day.y, r: 16, a: 0.4, steps: 3 }],
+  sunset: [{ x: SUN.sunset.x, y: SUN.sunset.y, r: 18, a: 0.45, steps: 3 }],
 };
 
 /** Fade for a stepped glow ring at normalised distance `d` (0 centre, 1 edge). */
@@ -166,7 +167,7 @@ function branch(p: Painter, pts: [number, number][], from: number, to: number) {
   }
 }
 
-const LIT_SHARE: Record<TimeOfDay, number> = { day: 0, sunset: 0.3, night: 1 };
+const LIT_SHARE: Record<TimeOfDay, number> = { day: 0.12, sunset: 0.3, night: 0.65 };
 
 function lit(seed: number, time: TimeOfDay) {
   return hash(seed, 3, 77) < LIT_SHARE[time];
@@ -320,7 +321,7 @@ function doe(p: Painter, time: TimeOfDay) {
   }
 
   // Central bay: window between two small columns, then the entrance portal.
-  arched(220, 227, 90, 105, time !== 'day');
+  arched(220, 227, 90, 105, true);
   for (const x of [217, 229]) {
     for (let y = 90; y < 106; y++) {
       p.set(x, y, 'stoneLight');
