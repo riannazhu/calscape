@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { AudioEngine } from './audio/engine';
-import { ELEMENTS, ELEMENT_BY_ID, type ElementId } from './elements';
+import { ELEMENTS, ELEMENT_BY_ID, isActive, type ElementId, type ElementState } from './elements';
 import { H, W } from './scene/backdrop';
 import { PALETTES } from './scene/palette';
 import { World } from './scene/world';
@@ -52,20 +52,32 @@ export function App() {
     return () => events.forEach((e) => window.removeEventListener(e, unlock, { capture: true }));
   }, [engine]);
 
-  useEffect(() => engine.sync(state.elements), [engine, state.elements]);
+  // Elements added at another time of day rest silently and out of sight until it returns.
+  const active = useMemo(
+    () =>
+      Object.fromEntries(
+        ELEMENTS.map((e) => {
+          const s = state.elements[e.id];
+          return [e.id, { ...s, present: isActive(state.time, e.id, s) }];
+        }),
+      ) as Record<ElementId, ElementState>,
+    [state.elements, state.time],
+  );
+
+  useEffect(() => engine.sync(active), [engine, active]);
   useEffect(
     () => engine.setMaster(state.master, state.masterMuted),
     [engine, state.master, state.masterMuted],
   );
   useEffect(() => {
-    engine.onChirp = (ms) => world.birdSing(ms);
+    engine.onCall = (id, ms) => world.call(id, ms);
   }, [engine, world]);
 
   useEffect(() => {
     world.time = state.time;
     world.highlight = highlight;
-    for (const e of ELEMENTS) world.present[e.id] = state.elements[e.id].present;
-  }, [world, state.time, state.elements, highlight]);
+    for (const e of ELEMENTS) world.present[e.id] = active[e.id].present;
+  }, [world, state.time, active, highlight]);
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -91,13 +103,13 @@ export function App() {
     return () => cancelAnimationFrame(raf);
   }, [world]);
 
-  // Removing an element closes its controls.
+  // Removing an element, or switching to a time without it, closes its controls.
   useEffect(() => {
-    const gone = (id: ElementId | null) => id !== null && !state.elements[id].present;
+    const gone = (id: ElementId | null) => id !== null && !active[id].present;
     if (gone(pinned)) setPinned(null);
     if (gone(lingering)) setLingering(null);
     if (gone(hovered)) setHovered(null);
-  }, [state.elements, pinned, lingering, hovered]);
+  }, [active, pinned, lingering, hovered]);
 
   const close = useCallback(() => {
     window.clearTimeout(graceTimer.current);
@@ -200,7 +212,7 @@ export function App() {
           aria-hidden="true"
         />
 
-        {ELEMENTS.filter((e) => state.elements[e.id].present).map((e) => {
+        {ELEMENTS.filter((e) => active[e.id].present).map((e) => {
           const b = world.bounds(e.id);
           const s = state.elements[e.id];
           const status = s.muted ? 'muted' : `volume ${Math.round(s.volume * 100)}%`;

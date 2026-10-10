@@ -103,6 +103,12 @@ export type PaletteKey =
   | 'deer'
   | 'deerDark'
   | 'deerLight'
+  | 'dove'
+  | 'doveDark'
+  | 'doveLight'
+  | 'frog'
+  | 'frogDark'
+  | 'frogLight'
   | 'outline'
   | 'outlineGlow';
 
@@ -138,6 +144,12 @@ const DAYLIT_SPRITES = {
   deer: '#c07a48',
   deerDark: '#6e4028',
   deerLight: '#f6e4c4',
+  dove: '#b09a90',
+  doveDark: '#6f5f5c',
+  doveLight: '#e3c4b8',
+  frog: '#6aa84a',
+  frogDark: '#3c6c30',
+  frogLight: '#efe6bc',
   star: '#c7c3ef',
   moon: '#f6efd6',
   moonShade: '#d8cfb3',
@@ -398,6 +410,12 @@ export const NIGHT: Palette = {
   deer: '#a66a44',
   deerDark: '#5c3626',
   deerLight: '#ecd3ae',
+  dove: '#8c8098',
+  doveDark: '#585070',
+  doveLight: '#b8a4b4',
+  frog: '#5c9a50',
+  frogDark: '#335c34',
+  frogLight: '#e2dcb4',
   outline: '#d6eeff',
   outlineGlow: 'rgba(72, 156, 255, 0.65)',
 };

@@ -1,23 +1,37 @@
 import { useEffect, useRef, useState, type Dispatch } from 'react';
-import { ELEMENT_BY_ID, INVENTORY, MASTER_STEPS } from '../elements';
-import { BIRD_IDLE, CRICKET } from '../scene/sprites';
+import { ELEMENT_BY_ID, INVENTORY, MASTER_STEPS, type ElementId } from '../elements';
+import { type Sprite, BIRD_IDLE, CRICKET, DOVE, FROG, OWL, SQUIRREL } from '../scene/sprites';
 import type { Action, AppState } from '../state';
 import { Icon, SpriteArt } from './PixelArt';
 import {
   BELL_TILE,
   CLOUD_TILE,
+  GUITAR_TILE,
   EXIT_FULLSCREEN,
   FULLSCREEN,
   MOON,
   SPEAKER,
   SPEAKER_MUTED,
   SUN,
+  SPRINKLER_TILE,
   SUNSET,
   WIND_TILE,
 } from './icons';
 import type { TimeOfDay } from '../scene/palette';
 
-const TILE_ART = { rain: CLOUD_TILE, bird: BIRD_IDLE, bell: BELL_TILE, crickets: CRICKET[0], wind: WIND_TILE };
+const TILE_ART: Record<ElementId, Sprite> = {
+  rain: CLOUD_TILE,
+  bird: BIRD_IDLE,
+  bell: BELL_TILE,
+  squirrel: SQUIRREL[0],
+  sprinkler: SPRINKLER_TILE,
+  guitar: GUITAR_TILE,
+  dove: DOVE[0],
+  wind: WIND_TILE,
+  crickets: CRICKET[0],
+  owl: OWL.open,
+  frogs: FROG[0],
+};
 
 const TIMES: { time: TimeOfDay; label: string; icon: string[] }[] = [
   { time: 'day', label: 'Day', icon: SUN },
@@ -48,7 +62,7 @@ export function BottomControls({ state, dispatch }: Props) {
       </div>
 
       <div className="chrome bottom-center panel" role="group" aria-label="Inventory">
-        {INVENTORY.map((id) => {
+        {INVENTORY[state.time].map((id) => {
           const present = state.elements[id].present;
           const name = ELEMENT_BY_ID[id].name;
           return (

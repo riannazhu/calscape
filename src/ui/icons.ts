@@ -131,14 +131,49 @@ export const EXIT_FULLSCREEN = [
 
 export const WIND_TILE = fromRows(
   [
-    '........WW..',
-    'WWWWWWWW..W.',
-    '.......W.W.W',
-    '..wwww..WW.W',
-    '...........W',
-    '....WWWWWWW.',
+    '....LLL......',
+    '..LLLLLLl....',
+    '.LLLLLLLll...',
+    '.LLLLLLlll.WW',
+    'LLLLLLllll...',
+    '.LLLLllll.WWW',
+    '..lllll......',
+    '.....T...WW..',
+    '.....T.......',
+    '....TTT......',
   ],
-  { W: 'cloudLight', w: 'cloudMid' },
+  { L: 'leafLight', l: 'leafMid', T: 'trunk', W: 'cloudLight' },
+);
+
+export const SPRINKLER_TILE = fromRows(
+  [
+    '...wwww.....',
+    '.ww....ww...',
+    'w........w..',
+    'w....K...w..',
+    '....KSK.....',
+    '.....S......',
+    'g..SSSSS..g.',
+    'gggggggggggg',
+  ],
+  { w: 'birdLight', K: 'lampPost', S: 'stoneMid', g: 'lawn' },
+);
+
+export const GUITAR_TILE = fromRows(
+  [
+    '..........kk',
+    '.........kk.',
+    '........n...',
+    '.......n....',
+    '..bbb.n.....',
+    '.bBBBn......',
+    'bBBhBBb.....',
+    'bBhhhBb.....',
+    'bBBhBBb.....',
+    '.bBBBb......',
+    '..bbb.......',
+  ],
+  { b: 'trunk', B: 'basket', h: 'trunkDark', n: 'trunkDark', k: 'trunkDark' },
 );
 
 export const CLOUD_TILE = fromRows(

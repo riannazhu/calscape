@@ -79,11 +79,17 @@ const DAY_PEOPLE: Placed[] = [
   { sprite: person('stand', { hair: 'hairDark', skin: 'skin1', top: 'shirtBlue' }, true), x: 99, y: 150 },
 ];
 
+export const GUITARIST: Placed = {
+  sprite: person('guitar', { hair: 'hairBrown', skin: 'skin3', top: 'shirtWhite' }),
+  x: 108,
+  y: 145,
+};
+
 /** Golden hour: a picnic, a guitar circle and sunset watchers. */
 const SUNSET_PEOPLE: Placed[] = [
   ...COUPLE,
   { sprite: person('sit', { hair: 'hairGold', skin: 'skin1', top: 'shirtRed' }), x: 98, y: 145 },
-  { sprite: person('guitar', { hair: 'hairBrown', skin: 'skin3', top: 'shirtWhite' }), x: 108, y: 145 },
+  GUITARIST,
   { sprite: person('sit', { hair: 'hairDark', skin: 'skin1', top: 'shirtBlue' }, true), x: 120, y: 145 },
   { sprite: person('lie', { hair: 'hairBrown', skin: 'skin2', top: 'shirtYellow' }), x: 257, y: 149 },
   ...PICNIC,

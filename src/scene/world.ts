@@ -1,8 +1,8 @@
-import type { ElementId } from '../elements';
+import { ELEMENTS, type ElementId } from '../elements';
 import { PALETTES, type Palette, type TimeOfDay } from './palette';
-import { hex, mulberry32 } from './pixels';
+import { hash, hex, mulberry32 } from './pixels';
 import { H, PERCH, STARS, W, drawFar, drawFg, drawMid, lawnTop, skyColor } from './backdrop';
-import { SPIKEBALL } from './people';
+import { GUITARIST, SPIKEBALL } from './people';
 import {
   BIRD_IDLE,
   BIRD_SING,
@@ -10,12 +10,17 @@ import {
   CRICKET,
   DEER_GRAZE,
   DEER_WALK,
+  DOVE,
+  FROG,
+  OWL,
   RAIN_CLOUDS,
+  SPRINKLER,
+  SQUIRREL,
   SUNSET_WISPS,
-  WIND,
   WISPS,
   drawSprite,
   flipX,
+  fromRows,
   opaque,
   type Sprite,
 } from './sprites';
@@ -27,8 +32,32 @@ const BIRD_FRAMES = {
 
 const BIRD_POS = { x: PERCH.x, y: PERCH.feetY - BIRD_IDLE.h + 1 };
 const BELL_POS = { x: 98, y: 20 };
-const CRICKET_POS = { x: 146, y: 142 };
-const WIND_POS = { x: 178, y: 54 };
+const OWL_POS = { x: PERCH.x - 2, y: PERCH.feetY - OWL.open.h + 1 };
+const SQUIRREL_POS = { x: 55, y: 30 };
+/** The dove perches on the left lamp in front of Doe. */
+const DOVE_POS = { x: 200, y: 102 };
+const CRICKET_POS = { x: 229, y: 147 };
+const FROG_POS = { x: 252, y: 160 };
+const SPRINKLER_POS = { x: 219, y: 158 };
+/** The breeze is the left tree itself: everything in the canopy layer left of this column. */
+const TREE_RIGHT = 100;
+
+/** Elements that sit behind Doe, the hedges or the canopies and are hidden where those overlap. */
+const OCCLUDED = new Set<ElementId>(['rain', 'bell']);
+/** Large targets need no extra margin around their silhouette. */
+const UNPADDED = new Set<ElementId>(['rain', 'bell', 'wind']);
+
+/** An impact sprinkler ticks across its arc, then ratchets back. */
+const SPRINKLER_SWEEP_S = 5.3;
+const SPRINKLER_RETURN_S = 1.9;
+const SPRINKLER_TICK_S = 0.24;
+
+const NOTES = [
+  fromRows(['.##', '.#.', '.#.', '##.', '##.'], { '#': 'gold' }),
+  fromRows(['.###', '.#.#', '.#.#', '##.#', '####'], { '#': 'gold' }),
+];
+const NOTE_EVERY_S = 1.8;
+const NOTE_LIFE_S = 5.4;
 
 /** One rally of the spikeball: hand to net, net to the next player's hands. */
 const RALLY = [0, 1, 3, 2, 0, 3, 1];
@@ -100,7 +129,7 @@ function alphaMask(c: HTMLCanvasElement) {
  * used for outlines and hit-testing. Lives outside React render state.
  */
 export class World {
-  present: Record<ElementId, boolean> = { rain: false, bird: false, bell: false, crickets: false, wind: false };
+  present = Object.fromEntries(ELEMENTS.map((e) => [e.id, false])) as Record<ElementId, boolean>;
   time: TimeOfDay = 'day';
   reducedMotion = false;
   highlight: ElementId | null = null;
@@ -108,7 +137,8 @@ export class World {
   private layers = new Map<string, Layers>();
   private midMask: Uint8Array;
   private fgMask: Uint8Array;
-  private birdSingUntil = 0;
+  private callUntil: Partial<Record<ElementId, number>> = {};
+  private nextBlink = 0;
   private birdFacing = 0;
   private birdHopUntil = 0;
   private nextBirdMove = 0;
@@ -136,10 +166,17 @@ export class World {
   ];
   private lastDeer = 0;
 
+  private tree: Sprite;
+
   constructor() {
     const l = this.getLayers('day');
     this.midMask = alphaMask(l.mid);
     this.fgMask = alphaMask(l.fg);
+    const px: Sprite['px'] = new Array(TREE_RIGHT * H).fill(null);
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < TREE_RIGHT; x++) if (this.fgMask[y * W + x]) px[y * TREE_RIGHT + x] = 'leaf';
+    }
+    this.tree = { w: TREE_RIGHT, h: H, px };
   }
 
   get palette(): Palette {
@@ -160,8 +197,13 @@ export class World {
     return l;
   }
 
-  birdSing(ms: number) {
-    this.birdSingUntil = Math.max(this.birdSingUntil, performance.now() + ms);
+  /** An element is calling for the next `ms`: the bird sings, the owl hoots, and so on. */
+  call(id: ElementId, ms: number) {
+    this.callUntil[id] = Math.max(this.callUntil[id] ?? 0, performance.now() + ms);
+  }
+
+  private calling(id: ElementId, now: number) {
+    return now < (this.callUntil[id] ?? 0);
   }
 
   /** Resting bounds of an element, used to place keyboard focus targets. */
@@ -182,10 +224,22 @@ export class World {
         return RAIN_CLOUDS.map((c) => ({ ...c }));
       case 'bird':
         return [{ sprite: BIRD_IDLE, ...BIRD_POS }];
+      case 'owl':
+        return [{ sprite: OWL.open, ...OWL_POS }];
+      case 'squirrel':
+        return [{ sprite: SQUIRREL[0], ...SQUIRREL_POS }];
+      case 'dove':
+        return [{ sprite: DOVE[0], ...DOVE_POS }];
       case 'crickets':
         return [{ sprite: CRICKET[0], ...CRICKET_POS }];
+      case 'frogs':
+        return [{ sprite: FROG[0], ...FROG_POS }];
+      case 'sprinkler':
+        return [{ sprite: SPRINKLER, ...SPRINKLER_POS }];
+      case 'guitar':
+        return [{ ...GUITARIST }];
       case 'wind':
-        return [{ sprite: WIND, ...WIND_POS }];
+        return [{ sprite: this.tree, x: 0, y: 0 }];
     }
   }
 
@@ -196,42 +250,64 @@ export class World {
 
   private place(now: number): Placed[] {
     const t = this.reducedMotion ? 0 : now / 1000;
+    const still = this.reducedMotion;
+    const blip = (ms: number) => !still && Math.floor(now / ms) % 2 === 0;
     const out: Placed[] = [];
-    if (this.present.bell) out.push({ id: 'bell', parts: this.restingParts('bell') });
-    if (this.present.rain) {
-      out.push({
-        id: 'rain',
-        parts: RAIN_CLOUDS.map((c, i) => ({
-          sprite: c.sprite,
-          x: c.x + Math.round(Math.sin((t * 2 * Math.PI) / (50 + i * 9) + i) * 2),
-          y: c.y + Math.round(Math.sin((t * 2 * Math.PI) / (17 + i * 4) + i * 2)),
-        })),
-      });
-    }
-    if (this.present.bird) {
-      const singing = now < this.birdSingUntil && Math.floor(now / 140) % 2 === 0;
-      const frames = singing ? BIRD_FRAMES.sing : BIRD_FRAMES.idle;
-      out.push({
-        id: 'bird',
-        parts: [
-          {
-            sprite: frames[this.birdFacing],
-            x: BIRD_POS.x + this.sway(t),
-            y: BIRD_POS.y - (now < this.birdHopUntil ? 1 : 0),
-          },
-        ],
-      });
-    }
-    if (this.present.crickets) {
-      // Short bursts of wing-lifting, like a cricket mid-chirp.
-      const chirping = Math.sin(t * 1.3) > 0.3 && Math.floor(now / 160) % 2 === 0;
-      out.push({ id: 'crickets', parts: [{ sprite: CRICKET[chirping ? 1 : 0], ...CRICKET_POS }] });
-    }
-    if (this.present.wind) {
-      out.push({
-        id: 'wind',
-        parts: [{ sprite: WIND, x: WIND_POS.x + Math.round(Math.sin(t * 0.5) * 6), y: WIND_POS.y }],
-      });
+    const at = (id: ElementId, sprite: Sprite, pos: { x: number; y: number }, dx = 0, dy = 0) =>
+      out.push({ id, parts: [{ sprite, x: pos.x + dx, y: pos.y + dy }] });
+
+    for (const id of Object.keys(this.present) as ElementId[]) {
+      if (!this.present[id]) continue;
+      switch (id) {
+        case 'bell':
+        case 'guitar':
+          out.push({ id, parts: this.restingParts(id) });
+          break;
+        case 'wind':
+          at(id, this.tree, { x: 0, y: 0 }, this.sway(t));
+          break;
+        case 'rain':
+          out.push({
+            id,
+            parts: RAIN_CLOUDS.map((c, i) => ({
+              sprite: c.sprite,
+              x: c.x + Math.round(Math.sin((t * 2 * Math.PI) / (50 + i * 9) + i) * 2),
+              y: c.y + Math.round(Math.sin((t * 2 * Math.PI) / (17 + i * 4) + i * 2)),
+            })),
+          });
+          break;
+        case 'bird': {
+          const frames = this.calling(id, now) && blip(140) ? BIRD_FRAMES.sing : BIRD_FRAMES.idle;
+          at(id, frames[this.birdFacing], BIRD_POS, this.sway(t), now < this.birdHopUntil ? -1 : 0);
+          break;
+        }
+        case 'owl': {
+          const hooting = this.calling(id, now);
+          const blinking = !hooting && now < this.nextBlink && this.nextBlink - now < 160;
+          at(id, hooting ? OWL.hoot : blinking ? OWL.blink : OWL.open, OWL_POS, 0, hooting && blip(300) ? 1 : 0);
+          break;
+        }
+        case 'squirrel': {
+          const flick = this.calling(id, now) ? blip(110) : !still && t % 7 < 0.35;
+          at(id, SQUIRREL[flick ? 1 : 0], SQUIRREL_POS);
+          break;
+        }
+        case 'dove':
+          at(id, DOVE[this.calling(id, now) ? 1 : 0], DOVE_POS);
+          break;
+        case 'crickets':
+          at(id, CRICKET[!still && t % 2.4 < 0.35 && blip(90) ? 1 : 0], CRICKET_POS);
+          break;
+        case 'frogs': {
+          // Calls come in bouts, a throat puff every 0.8 s, then a quiet spell.
+          const bout = Math.sin(t * 0.37) > 0;
+          at(id, FROG[!still && bout && t % 0.8 < 0.3 ? 1 : 0], FROG_POS);
+          break;
+        }
+        case 'sprinkler':
+          at(id, SPRINKLER, SPRINKLER_POS);
+          break;
+      }
     }
     return out;
   }
@@ -239,7 +315,7 @@ export class World {
   private occluded(id: ElementId, x: number, y: number) {
     if (x < 0 || y < 0 || x >= W || y >= H) return true;
     const i = y * W + x;
-    if (id === 'bird' || id === 'crickets') return false;
+    if (!OCCLUDED.has(id)) return false;
     if (this.midMask[i] === 1 || this.fgMask[i] === 1) return true;
     return id === 'rain' && this.present.bell && opaque(CAMPANILE, x - BELL_POS.x, y - BELL_POS.y);
   }
@@ -254,7 +330,7 @@ export class World {
     const y = Math.floor(ly);
     for (let i = this.placedCache.length - 1; i >= 0; i--) {
       const p = this.placedCache[i];
-      const pad = p.id === 'bird' || p.id === 'crickets' ? 2 : 0;
+      const pad = UNPADDED.has(p.id) ? 0 : 2;
       for (let dy = -pad; dy <= pad; dy++) {
         for (let dx = -pad; dx <= pad; dx++) {
           if (this.mask(p, x + dx, y + dy)) return p.id;
@@ -276,6 +352,7 @@ export class World {
       }
       this.nextBirdMove = now + 9000 + this.rng() * 16000;
     }
+    if (this.present.owl && now > this.nextBlink) this.nextBlink = now + 3000 + this.rng() * 6000;
     const windy = this.present.wind;
     if (now > this.nextLeaf) {
       if (this.nextLeaf > 0 && this.leaves.length < (windy ? 5 : 2)) {
@@ -326,8 +403,6 @@ export class World {
     const rain = get('rain');
     if (rain) for (const s of rain.parts) drawSprite(ctx, s.sprite, s.x, s.y, pal);
 
-    const wind = get('wind');
-    if (wind) for (const s of wind.parts) drawSprite(ctx, s.sprite, s.x, s.y, pal);
 
     const bell = get('bell');
     if (bell) for (const s of bell.parts) drawSprite(ctx, s.sprite, s.x, s.y, pal);
@@ -335,8 +410,12 @@ export class World {
     ctx.drawImage(mid, 0, 0);
     if (night) this.drawDeer(ctx, pal, now);
     else if (this.time === 'day') this.drawBall(ctx, pal, t);
-    const crickets = get('crickets');
-    if (crickets) for (const s of crickets.parts) drawSprite(ctx, s.sprite, s.x, s.y, pal);
+    for (const id of ['crickets', 'frogs', 'sprinkler', 'dove'] as const) {
+      const p = get(id);
+      if (p) for (const s of p.parts) drawSprite(ctx, s.sprite, s.x, s.y, pal);
+    }
+    if (get('sprinkler')) this.drawSpray(ctx, pal, t);
+    if (get('guitar')) this.drawNotes(ctx, pal, t);
     if (rain) this.drawDrops(ctx, pal, t, rain.parts);
     ctx.drawImage(fg, this.sway(t), 0);
 
@@ -353,8 +432,10 @@ export class World {
       ctx.fillRect(0, 0, W, H);
     }
 
-    const bird = get('bird');
-    if (bird) for (const s of bird.parts) drawSprite(ctx, s.sprite, s.x, s.y, pal);
+    for (const id of ['bird', 'owl', 'squirrel'] as const) {
+      const p = get(id);
+      if (p) for (const s of p.parts) drawSprite(ctx, s.sprite, s.x, s.y, pal);
+    }
 
     const hl = placed.find((p) => p.id === this.highlight);
     if (hl) this.drawOutline(ctx, hl, pal);
@@ -380,6 +461,59 @@ export class World {
     }
     ctx.fillStyle = pal.ball;
     ctx.fillRect(Math.round(x), Math.round(y), 1, 1);
+  }
+
+  /** The sprinkler's jet: an arc of droplets sweeping across the lawn in ticks. */
+  private drawSpray(ctx: CanvasRenderingContext2D, pal: Palette, t: number) {
+    const cycle = SPRINKLER_SWEEP_S + SPRINKLER_RETURN_S;
+    const phase = t % cycle;
+    const ticks = Math.floor(SPRINKLER_SWEEP_S / SPRINKLER_TICK_S);
+    const along =
+      phase < SPRINKLER_SWEEP_S
+        ? Math.floor(phase / SPRINKLER_TICK_S) / ticks
+        : 1 - (phase - SPRINKLER_SWEEP_S) / SPRINKLER_RETURN_S;
+    // Fanning across the lawn to the left, so the jet never crosses the path.
+    const angle = Math.PI * (0.94 + 0.4 * along);
+    const hx = SPRINKLER_POS.x + 2;
+    const hy = SPRINKLER_POS.y;
+    ctx.fillStyle = pal.rain;
+    const point = (s: number) => [
+      hx + Math.cos(angle) * s,
+      hy - (0.9 * s - 0.04 * s * s) + Math.sin(angle) * s * 0.25,
+    ];
+    const flicker = Math.floor(t * 12);
+    for (let i = 1; i <= 12; i++) {
+      if (hash(i, flicker, 5) < 0.12) continue;
+      const [x, y] = point(i * 1.9);
+      ctx.globalAlpha = 0.95 - i * 0.03;
+      ctx.fillRect(Math.round(x), Math.round(y), 1, 1);
+      ctx.globalAlpha *= 0.5;
+      ctx.fillRect(Math.round(x), Math.round(y) + 1, 1, 1);
+    }
+    // Droplets scattering where the jet comes down.
+    const [lx, ly] = point(22.5);
+    ctx.globalAlpha = 0.7;
+    for (let k = 0; k < 4; k++) {
+      const dx = Math.round((hash(k, flicker, 6) - 0.5) * 6);
+      const dy = Math.round((hash(k, flicker, 7) - 0.5) * 3);
+      ctx.fillRect(Math.round(lx) + dx, Math.round(ly) + dy, 1, 1);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /** Little notes drifting up from the guitar and fading. */
+  private drawNotes(ctx: CanvasRenderingContext2D, pal: Palette, t: number) {
+    if (this.reducedMotion) return;
+    const newest = Math.floor(t / NOTE_EVERY_S);
+    for (let k = newest - Math.ceil(NOTE_LIFE_S / NOTE_EVERY_S); k <= newest; k++) {
+      const age = t - k * NOTE_EVERY_S;
+      if (age < 0 || age > NOTE_LIFE_S) continue;
+      ctx.globalAlpha = Math.min(1, (1 - age / NOTE_LIFE_S) * 1.6);
+      const x = GUITARIST.x + 5 + (k % 3) * 2 + Math.sin(age * 1.4 + k) * 2;
+      const y = GUITARIST.y - 6 - age * 3;
+      drawSprite(ctx, NOTES[k % 2 === 0 ? 0 : 1], Math.round(x), Math.round(y), pal);
+    }
+    ctx.globalAlpha = 1;
   }
 
   /** Deer amble a few steps, then stand a while; some pauses end in grazing. */
