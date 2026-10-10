@@ -10,9 +10,11 @@ Music is too distracting to study with. I want CalScape to play on the TV as a c
 - The world is the main interface. Use sprite inventory tiles and controls anchored to objects, rather than a list of sound sliders.
 - Keep the screen calm and uncluttered. No separate sound indicators are needed; the mute button communicates audio state.
 
-## 3. MVP scope
+## 3. Scope
 
-| Include in MVP | Defer |
+The Glade scene is complete: everything in the first column is built. The second column lists what is not yet built. Screenshots of each time of day, rain and the controls are in `docs/screenshots/` and shown in the README.
+
+| Built | Not yet built |
 | --- | --- |
 | One Glade scene facing Doe, with Campanile behind it on the left | Additional scenes and scene switching |
 | Four elements per time of day (rain and the Campanile bell in all three) | Storm, creek, chatter, and more elements |
@@ -22,21 +24,21 @@ Music is too distracting to study with. I want CalScape to play on the TV as a c
 
 ## 4. Artistic direction
 
-Use a smaller, tile-like world with obvious square pixels, a restrained palette, simple foliage, and broad areas of lawn and sky. Avoid photographic textures, dense grass detail, and a highly rendered illustration. The attached mockups guide composition and controls; their backdrop detail should be reduced.
+Use a smaller, tile-like world with obvious square pixels, a restrained palette, simple foliage, and broad areas of lawn and sky. Avoid photographic textures, dense grass detail, and a highly rendered illustration.
 
 Everything stays on the pixel grid, including the sky and light. Sky gradients are drawn as solid colour steps on 2 × 2 pixel blocks, never smooth per-pixel blending or checkerboard dithering. Step edges wobble gently so bands read as natural rather than ruled, and they follow the light: at sunset they arc around the low sun, by day they tilt slightly toward it. Glows around the moon and street lamps are a few concentric stepped rings on the same block grid; stars have no halo, and the sun has a subtle stepped glow at midday and sunset.
 
 Three times of day share one composition:
 
 - **Day:** clear blue sky with the sun high on the right. Only a couple of Doe's windows are lit. People play spikeball, picnic, sit together, and read books (held open so the book reads clearly) on the open lawn.
-- **Sunset:** a blended periwinkle-to-lavender-to-pink-to-peach sky as in Figure 5, warmest around the low sun on the left, with more pink cloud streaks, lit from below, drifting noticeably faster than clouds at other times. The Glade has sunset activities: a picnic, a small guitar circle, a couple watching the sun go down, and someone lying in the grass.
+- **Sunset:** a blended periwinkle-to-lavender-to-pink-to-peach sky, warmest around the low sun on the left, with more pink cloud streaks, lit from below, drifting noticeably faster than clouds at other times. The Glade has sunset activities: a picnic, a small guitar circle, a couple watching the sun go down, and someone lying in the grass.
 - **Night:** dark sky, moon, frequently twinkling stars, most of Doe's windows lit, and warm lamp glow in front of Doe. No people on the Glade; spotted does in warm brown tones rest there instead. They stand with heads up between short walks, sometimes lower their heads to graze, and each keeps its own unsynchronised rhythm.
 
 **Rain** changes the weather, not just the foreground: while rain is present, the clear sky gives way to a low, softly billowed cloud deck in each time of day's own cloud colours (grey by day, dusky mauve at sunset, deep blue at night), still stepped on the 2 × 2 grid. The sun, moon, stars and their glows are hidden behind it, and a light tint dims the whole scene. Removing the rain brings the clear sky back.
 
-Foreground trees frame the top corners. The left tree follows Figure 5: a thick trunk rising diagonally, a sturdy branch where the bird perches in open sky, leaves hanging below and to the right of it, and a light crown, with no branch tapering thin. The left canopy keeps clear space around the Campanile's spire.
+Foreground trees frame the top corners. The left tree has a thick trunk rising diagonally, a sturdy branch where the bird perches in open sky, leaves hanging below and to the right of it, and a light crown, with no branch tapering thin. The left canopy keeps clear space around the Campanile's spire.
 
-Face Doe from the Glade at lawn level. Doe must read as a long pale facade with tall repeated windows and a low roofline. Place the Campanile behind and to the left of Doe, following Figure 5. Keep both landmarks recognizable when simplifying them.
+Face Doe from the Glade at lawn level. Doe must read as a long pale facade with tall repeated windows and a low roofline. Place the Campanile behind and to the left of Doe. Keep both landmarks recognizable when simplifying them.
 
 ## 5. Interface requirements
 
@@ -44,7 +46,7 @@ Face Doe from the Glade at lawn level. Doe must read as a long pale facade with 
 | --- | --- |
 | Bottom left | Sun, sunset and moon tiles switch between day, sunset and night. At night the Glade has deer instead of people. Preserve all audio settings and playback. |
 | Bottom center | Pixel inventory with one tile per element sprite, and no separate add tile. Each time of day offers its own four elements (see below). Select an absent element to add it at a predefined scene position. Mark present elements without duplicating them. |
-| Bottom right | Master volume control and adjacent fullscreen tile, matching the nighttime Glade, café, and marina suite. Prefer the shown pixel volume blocks; retain smooth gain internally. |
+| Bottom right | Master volume control as pixel volume blocks, with an adjacent fullscreen tile. Retain smooth gain internally. |
 | Scene objects | Hover gives the physical sprite a clear outline and shows its anchored volume adjustment bar. Bars are nudged to stay fully inside the visible scene. |
 | Top corners | Small CalScape label with a pixel bear, and the scene name with a pixel tree. Both icons are about the height of the text, so the two labels are the same height. A clock can be added later if useful. |
 
@@ -85,26 +87,26 @@ All corner menus attach to the visible scene rectangle, not the browser window, 
   An element added at one time of day keeps its place, mute and volume when the time changes. If the new time doesn't offer it, its sound fades out and its sprite hides; both come back when you switch back.
 - Rain loops beneath the cloud; the songbird chirps intermittently from its branch.
 - Squirrel (day): a fox squirrel on the songbird's branch flicks its tail and chitters now and then, with a rustle of leaves.
-- Mourning dove (sunset): a dove the songbird's size, on the same branch, lowers its head and puffs its breast as it gives a soft "oo-WOO-oo... oo... oo" every so often. The call is a real recording, `public/sounds/dove.mp3`: one perch-coo from xeno-canto XC128006 (CC BY-SA 3.0, credited in the README). The background noise is removed entirely: only the coo's own pitch and harmonics are kept, so the gaps between notes are silent. A synthesised coo plays if it fails to load.
+- Mourning dove (sunset): a dove the songbird's size, on the same branch, lowers its head and puffs its breast as it gives a soft "oo-WOO-oo... oo... oo" every so often. The call is a real recording, `src/audio/sounds/dove.mp3`: one perch-coo from xeno-canto XC128006 (CC BY-SA 3.0, credited in the README). The background noise is removed entirely: only the coo's own pitch and harmonics are kept, so the gaps between notes are silent. A synthesised coo plays if it fails to load.
 - Breeze (sunset): low, even wind with only gentle swells. There is no sprite in the sky; the breeze is the trees themselves. Its target and outline are the left tree, and its tile is a tree with wind lines. While present, the canopies and the perched bird rock by a pixel, and leaves fall more often and drift sideways. 
 - Crickets (night): a tiny cricket on the lawn beside the path lifts its wings now and then. The sound is periodic, like real field crickets: a few nearby crickets each chirp on a steady beat (three or four quick pulses every half-second to a second, now and then pausing for a few beats), over fainter distant crickets on their own steady beats and a hush of tree-cricket trill.
-- Owl (night): a small great horned owl on the bird's branch blinks, and puffs its white throat as it gives a soft, distant "hoo, hoo-hoo, hoo, hoo" every so often. The call is a real recording, `public/sounds/owl.mp3`: one territorial hoot near 315 Hz from xeno-canto XC450919 (CC BY-SA 4.0, credited in the README), cleaned the same way as the dove so only the hoots remain. A synthesised hoot, about two seconds long, plays if it fails to load.
-- Owl, dove and bell calls use a recording from `public/sounds` when one is present (`owl.mp3`, `dove.mp3`, `campanile.mp3`), and fall back to a synthesised call otherwise. Recordings must be licensed for reuse.
+- Owl (night): a small great horned owl on the bird's branch blinks, and puffs its white throat as it gives a soft, distant "hoo, hoo-hoo, hoo, hoo" every so often. The call is a real recording, `src/audio/sounds/owl.mp3`: one territorial hoot near 315 Hz from xeno-canto XC450919 (CC BY-SA 4.0, credited in the README), cleaned the same way as the dove so only the hoots remain. A synthesised hoot, about two seconds long, plays if it fails to load.
+- Owl, dove and bell calls use recordings in `src/audio/sounds` (`owl.mp3`, `dove.mp3`, `campanile.mp3`), imported by the audio engine, and fall back to a synthesised call if one fails to load. Recordings must be licensed for reuse.
 - Campanile rings at the top of each hour on the user's local clock, striking the hour on a 12-hour clock (once at 1 PM, twice at 2 AM, twelve times at noon and midnight). The sound is a single isolated strike of the Great Bear Bell. This is app timing, not a promise to reproduce the campus bell schedule.
 - Master volume multiplies each element gain, preserving the mix. Final gain = master volume × element volume × mute state. Muting does not erase volume; increasing volume does not automatically unmute.
 - Use short fades on gain changes and stops to avoid clicks. Use seamless loops and modest default levels. Switching the time of day leaves elements offered at both times playing untouched; only elements the new time doesn't offer fade out.
 
 ### Animation and study mode
 
-Use a fixed camera with slow cloud movement, sparse bird motion, gentle rain pixels, occasional leaf movement, a slow spikeball game in daylight, rare star twinkles, and does that mostly graze and only occasionally wander at night. Hover outlines and controls appear only during interaction. Proposed default: hide the menu bars and buttons after five seconds without pointer or keyboard activity when nothing is selected; reveal them on pointer movement or keyboard focus. Keep the scene and sound playing. Never hide controls while someone is adjusting them. Respect reduced-motion preferences.
+Use a fixed camera with slow cloud movement, sparse bird motion, gentle rain pixels, occasional leaf movement, a slow spikeball game in daylight, rare star twinkles, and does that mostly graze and only occasionally wander at night. Hover outlines and controls appear only during interaction. The menu bars and buttons hide after five seconds without pointer or keyboard activity when nothing is selected; reveal them on pointer movement or keyboard focus. Keep the scene and sound playing. Never hide controls while someone is adjusting them. Respect reduced-motion preferences.
 
-### Suggested implementation
+### Implementation
 
-Use React and TypeScript for application state and accessible controls, plus the Web Audio API for playback and mixing. This is a proposed stack, not a required dependency choice. The MVP needs no backend.
+Use React and TypeScript for application state and accessible controls, plus the Web Audio API for playback and mixing. The app needs no backend.
 
 Keep the base scene separate from transparent element sprites and animation layers. The Campanile tower is a removable element sprite, just like the cloud and bird; do not bake it into the backdrop. Store each element's presence, mute flag, volume, and fixed position. Keep audio nodes separate from render state so rerenders cannot start duplicate loops. Use matching sprite masks for silhouette outlines and accurate hit areas.
 
-Proposed art starting point: a 320 × 180 logical scene with 16 × 16 tiles and integer nearest-neighbor scaling. Confirm this with a small art test before drawing the full scene. Use the same pixel grid for backdrop, sprites, and outlines; render interface controls large enough to use on a desktop or TV.
+The scene is a 320 × 180 logical canvas with 16 × 16 tiles, scaled with nearest-neighbour sampling. Use the same pixel grid for backdrop, sprites, and outlines; render interface controls large enough to use on a desktop or TV.
 
 ## 7. Delivery checklist
 
@@ -116,7 +118,7 @@ Proposed art starting point: a 320 × 180 logical scene with 16 × 16 tiles and 
 4. Add day/sunset/night and subtle animation.
 5. Add fullscreen, idle hiding, and keyboard/touch behavior.
 
-### MVP acceptance checks
+### Acceptance checks
 
 - Add rain: its cloud appears, the sky turns overcast, and the rain loop starts. Mute: cloud and rain remain visible, audio stops. Remove: both disappear.
 - Hover a sprite and move onto its bar: outline is clear and controls remain usable. Clicking empty space closes them.
@@ -124,21 +126,3 @@ Proposed art starting point: a 320 × 180 logical scene with 16 × 16 tiles and 
 - Switch away from a time that offers an element and back: its sound fades out and returns, with no duplicate loops.
 - Remove and re-add repeatedly: no duplicate loops or leaked timers. Removing the Campanile removes its tower sprite and stops its sound and timers. Adding it plays one confirmation chime; enabled bells then fire once per hour.
 - Use fullscreen and study for an hour: motion stays calm, loops have no obvious seams, and controls work with keyboard and touch.
-
-## 8. Interface references
-
-These references establish the menu tiles, corner controls, hover outlines, and bars. Their detailed scenery is not the target pixel granularity.
-
-**Figure 1 — Nighttime Glade.** Carry forward: bottom-left day/night tiles, bottom-center inventory, bottom-right master volume and fullscreen tiles, clear silhouette outline, and anchored adjustment bar. Use its lawn-level framing as inspiration; refine landmark geometry against Figure 5.
-
-**Figure 2 — Rainy café.** Carry forward: physical object interaction, especially the outlined espresso machine and nearby bar. The café is a future scene; preserve the shared control layout when adding it.
-
-## 9. Scene references
-
-**Figure 3 — Berkeley Marina.** Carry forward: shared menu layout and a visible muted element. Muting the seagull retains its sprite. Marina is a future scene, not part of the first build.
-
-**Figure 4 — Open Glade composition.** Carry forward: quiet open lawn, room for sprites, and framing toward Doe. Correct the Campanile from the right to the left, replace the generic library facade, and simplify backdrop detail.
-
-## 10. Doe and Campanile reference
-
-**Figure 5 — Corrected Doe composition.** Use the long facade and Campanile behind it on the left as the architecture direction. Reduce grass, masonry, and foliage detail further for the tile-like world. Retain the earlier suite's outlined inventory and corner tiles rather than adopting every UI variation here.

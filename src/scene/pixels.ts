@@ -1,15 +1,5 @@
 import type { Palette, PaletteKey } from './palette';
 
-const BAYER4 = [
-  [0, 8, 2, 10],
-  [12, 4, 14, 6],
-  [3, 11, 1, 9],
-  [15, 7, 13, 5],
-];
-
-/** Ordered-dither threshold in (0, 1) for a pixel. */
-export const bayer = (x: number, y: number) => (BAYER4[y & 3][x & 3] + 0.5) / 16;
-
 /** Deterministic per-pixel hash in [0, 1). */
 export function hash(x: number, y: number, seed = 0): number {
   let h = (Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263) + Math.imul(seed, 1442695041)) | 0;

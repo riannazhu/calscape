@@ -1,4 +1,7 @@
 import type { ElementId, ElementState } from '../elements';
+import campanileUrl from './sounds/campanile.mp3';
+import doveUrl from './sounds/dove.mp3';
+import owlUrl from './sounds/owl.mp3';
 
 const FADE = 0.06;
 const STOP_FADE = 0.12;
@@ -50,13 +53,13 @@ const CALL_GAP_S: Partial<Record<ElementId, [number, number]>> = {
   owl: [30, 75],
 };
 /**
- * Optional recordings in public/sounds. Each is used when present; otherwise
- * the element falls back to its synthesised sound.
+ * Recordings in ./sounds. If one fails to load, the element falls back to its
+ * synthesised sound.
  */
 const SAMPLE_URLS: Partial<Record<ElementId, string>> = {
-  bell: 'campanile.mp3',
-  owl: 'owl.mp3',
-  dove: 'dove.mp3',
+  bell: campanileUrl,
+  owl: owlUrl,
+  dove: doveUrl,
 };
 
 type Source = AudioScheduledSourceNode;
@@ -225,7 +228,7 @@ function nextHour(after: number): Date {
 }
 
 /** Strikes for an hour on a 12-hour clock: 1 pm rings once, midnight and noon twelve times. */
-export function strikesFor(hour24: number): number {
+function strikesFor(hour24: number): number {
   return hour24 % 12 === 0 ? 12 : hour24 % 12;
 }
 
@@ -279,14 +282,14 @@ export class AudioEngine {
       convolver.buffer = reverbImpulse(ctx, 3.2);
       this.reverb = ctx.createGain();
       this.reverb.connect(convolver).connect(this.master);
-      for (const [id, file] of Object.entries(SAMPLE_URLS)) void this.loadSample(ctx, id as ElementId, file);
+      for (const [id, url] of Object.entries(SAMPLE_URLS)) void this.loadSample(ctx, id as ElementId, url);
     }
     if (this.ctx.state === 'suspended') void this.ctx.resume();
   }
 
-  private async loadSample(ctx: AudioContext, id: ElementId, file: string) {
+  private async loadSample(ctx: AudioContext, id: ElementId, url: string) {
     try {
-      const res = await fetch(`${import.meta.env.BASE_URL}sounds/${file}`);
+      const res = await fetch(url);
       if (!res.ok || !res.headers.get('content-type')?.startsWith('audio')) return;
       this.samples[id] = await ctx.decodeAudioData(await res.arrayBuffer());
     } catch {
@@ -459,8 +462,7 @@ export class AudioEngine {
     air.connect(lp).connect(gust).connect(dest);
 
     const rustle = ctx.createBufferSource();
-    this.rainBuffers ??= { hiss: seamlessNoise(ctx, 9.7, 0.35), drops: dropletLoop(ctx, 6.3, 70) };
-    rustle.buffer = this.rainBuffers.hiss;
+    rustle.buffer = this.rain(ctx).hiss;
     rustle.loop = true;
     const hp = ctx.createBiquadFilter();
     hp.type = 'highpass';
@@ -492,13 +494,14 @@ export class AudioEngine {
     for (const s of [air, rustle, lfo, tone]) sources.add(s);
   }
 
+  /** The rain's noise buffers, built once; the hiss also serves rustles and breath. */
+  private rain(ctx: AudioContext) {
+    return (this.rainBuffers ??= { hiss: seamlessNoise(ctx, 9.7, 0.35), drops: dropletLoop(ctx, 6.3, 70) });
+  }
+
   private rainSources(ctx: AudioContext, dest: AudioNode, sources: SourceSet) {
-    this.rainBuffers ??= {
-      hiss: seamlessNoise(ctx, 9.7, 0.35),
-      drops: dropletLoop(ctx, 6.3, 70),
-    };
     const hiss = ctx.createBufferSource();
-    hiss.buffer = this.rainBuffers.hiss;
+    hiss.buffer = this.rain(ctx).hiss;
     hiss.loop = true;
     const lp = ctx.createBiquadFilter();
     lp.type = 'lowpass';
@@ -511,7 +514,7 @@ export class AudioEngine {
     hiss.connect(lp).connect(hp).connect(hissGain).connect(dest);
 
     const drops = ctx.createBufferSource();
-    drops.buffer = this.rainBuffers.drops;
+    drops.buffer = this.rain(ctx).drops;
     drops.loop = true;
     const dropHp = ctx.createBiquadFilter();
     dropHp.type = 'highpass';
@@ -614,9 +617,8 @@ export class AudioEngine {
     osc.connect(env);
 
     if (breath > 0) {
-      this.rainBuffers ??= { hiss: seamlessNoise(ctx, 9.7, 0.35), drops: dropletLoop(ctx, 6.3, 70) };
       const air = ctx.createBufferSource();
-      air.buffer = this.rainBuffers.hiss;
+      air.buffer = this.rain(ctx).hiss;
       const band = ctx.createBiquadFilter();
       band.type = 'bandpass';
       band.frequency.value = curve[0][1];
@@ -701,9 +703,8 @@ export class AudioEngine {
       sources.add(osc);
       at += 0.08 + Math.random() * 0.03;
     }
-    this.rainBuffers ??= { hiss: seamlessNoise(ctx, 9.7, 0.35), drops: dropletLoop(ctx, 6.3, 70) };
     const rustle = ctx.createBufferSource();
-    rustle.buffer = this.rainBuffers.hiss;
+    rustle.buffer = this.rain(ctx).hiss;
     const bp = ctx.createBiquadFilter();
     bp.type = 'bandpass';
     bp.frequency.value = 3500;

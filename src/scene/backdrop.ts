@@ -90,7 +90,7 @@ const OVERCAST_SKY_SHOW: Record<TimeOfDay, number> = { day: 0.12, sunset: 0.35, 
  * A rainy sky: a low deck of cloud, brightest toward the horizon, mottled
  * into soft billows in 2x2 blocks. No sun, moon or stars break through.
  */
-export function overcastColor(time: TimeOfDay, pal: Palette, x: number, y: number): RGB {
+function overcastColor(time: TimeOfDay, pal: Palette, x: number, y: number): RGB {
   const bx = x >> 1;
   const by = y >> 1;
   const levels = 12;
@@ -387,7 +387,7 @@ function leftWing(p: Painter, time: TimeOfDay) {
   }
 }
 
-export const LAMPS = [205, 242];
+const LAMPS = [205, 242];
 
 const LAMP_GLOW_R = 15;
 

@@ -301,7 +301,7 @@ export const SUNSET: Palette = {
   rainTint: 'rgba(40, 44, 100, 0.18)',
 };
 
-export const NIGHT: Palette = {
+const NIGHT: Palette = {
   sky0: '#060a22',
   sky1: '#0a1130',
   sky2: '#0f193f',

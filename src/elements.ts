@@ -17,7 +17,7 @@ export interface ElementState {
   volume: number;
 }
 
-export type BarPlacement = 'above' | 'below' | 'right';
+type BarPlacement = 'above' | 'below' | 'right';
 
 export interface ElementDef {
   id: ElementId;
