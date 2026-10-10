@@ -1,32 +1,10 @@
 import { useEffect, useRef, useState, type Dispatch } from 'react';
-import { ELEMENT_BY_ID, INVENTORY, MASTER_STEPS, type ElementId } from '../elements';
-import { type Sprite, BIRD_IDLE, CRICKET, DOVE, OWL, SQUIRREL } from '../scene/sprites';
-import type { Action, AppState } from '../state';
-import { Icon, SpriteArt } from './PixelArt';
-import {
-  BELL_TILE,
-  CLOUD_TILE,
-  EXIT_FULLSCREEN,
-  FULLSCREEN,
-  MOON,
-  SPEAKER,
-  SPEAKER_MUTED,
-  SUN,
-  SUNSET,
-  WIND_TILE,
-} from './icons';
+import { MASTER_STEPS } from '../elements';
 import type { TimeOfDay } from '../scene/palette';
-
-const TILE_ART: Record<ElementId, Sprite> = {
-  rain: CLOUD_TILE,
-  bird: BIRD_IDLE,
-  bell: BELL_TILE,
-  squirrel: SQUIRREL[0],
-  dove: DOVE[0],
-  wind: WIND_TILE,
-  crickets: CRICKET[0],
-  owl: OWL.open,
-};
+import { SCENE_BY_ID } from '../scenes';
+import { elementsOf, type Action, type AppState } from '../state';
+import { Icon, SpriteArt } from './PixelArt';
+import { EXIT_FULLSCREEN, FULLSCREEN, MOON, SPEAKER, SPEAKER_MUTED, SUN, SUNSET } from './icons';
 
 const TIMES: { time: TimeOfDay; label: string; icon: string[] }[] = [
   { time: 'day', label: 'Day', icon: SUN },
@@ -40,6 +18,8 @@ interface Props {
 }
 
 export function BottomControls({ state, dispatch }: Props) {
+  const scene = SCENE_BY_ID[state.scene];
+  const elements = elementsOf(state);
   return (
     <>
       <div className="chrome bottom-left panel" role="group" aria-label="Time of day">
@@ -57,9 +37,10 @@ export function BottomControls({ state, dispatch }: Props) {
       </div>
 
       <div className="chrome bottom-center panel" role="group" aria-label="Inventory">
-        {INVENTORY[state.time].map((id) => {
-          const present = state.elements[id].present;
-          const name = ELEMENT_BY_ID[id].name;
+        {scene.inventory[state.time].map((id) => {
+          const present = elements[id].present;
+          const name = scene.elements.find((e) => e.id === id)!.name;
+          const art = scene.tiles[id]!;
           return (
             <button
               key={id}
@@ -68,7 +49,7 @@ export function BottomControls({ state, dispatch }: Props) {
               aria-pressed={present}
               onClick={() => dispatch({ type: present ? 'remove' : 'add', id })}
             >
-              <SpriteArt sprite={TILE_ART[id]} />
+              <SpriteArt sprite={art.sprite} palette={art.palette} />
             </button>
           );
         })}

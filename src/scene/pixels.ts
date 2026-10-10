@@ -1,4 +1,4 @@
-import type { Palette, PaletteKey } from './palette';
+import type { Palette } from './palette';
 
 /** Deterministic per-pixel hash in [0, 1). */
 export function hash(x: number, y: number, seed = 0): number {
@@ -60,22 +60,28 @@ function parseHex(h: string): number {
   return pack(rgb(h));
 }
 
+/** What shared drawing helpers need from a painter, so any scene's painter can be passed in. */
+export interface Brush<K extends string> {
+  set(x: number, y: number, key: K): void;
+  rect(x: number, y: number, w: number, h: number, key: K): void;
+}
+
 /** Writes palette colours straight into a pixel buffer, then hands back a canvas. */
-export class Painter {
+export class Painter<K extends string> implements Brush<K> {
   readonly buf: Uint32Array;
   private image: ImageData;
-  private colors = new Map<PaletteKey, number>();
+  private colors = new Map<K, number>();
 
   constructor(
     readonly w: number,
     readonly h: number,
-    readonly pal: Palette,
+    readonly pal: Palette<K>,
   ) {
     this.image = new ImageData(w, h);
     this.buf = new Uint32Array(this.image.data.buffer);
   }
 
-  private color(key: PaletteKey) {
+  private color(key: K) {
     let c = this.colors.get(key);
     if (c === undefined) {
       c = parseHex(this.pal[key]);
@@ -84,7 +90,7 @@ export class Painter {
     return c;
   }
 
-  set(x: number, y: number, key: PaletteKey) {
+  set(x: number, y: number, key: K) {
     x |= 0;
     y |= 0;
     if (x < 0 || y < 0 || x >= this.w || y >= this.h) return;
@@ -109,7 +115,7 @@ export class Painter {
     this.buf[y * this.w + x] = pack(mix([v & 0xff, (v >> 8) & 0xff, (v >> 16) & 0xff], c, Math.min(1, a)));
   }
 
-  rect(x: number, y: number, w: number, h: number, key: PaletteKey) {
+  rect(x: number, y: number, w: number, h: number, key: K) {
     for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) this.set(i, j, key);
   }
 

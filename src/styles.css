@@ -141,6 +141,43 @@ body {
   right: calc(var(--u) * 3);
 }
 
+/* The scene label doubles as the scene switcher. */
+.frame > .corner.scenes {
+  pointer-events: auto;
+}
+
+.scenes > span {
+  min-width: calc(var(--u) * 31);
+}
+
+.scene-pick {
+  appearance: none;
+  margin: 0;
+  padding: 0 calc(var(--u) * 0.5);
+  border: 0;
+  background: none;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  opacity: 0.4;
+  filter: saturate(0.5);
+}
+
+.scene-pick:hover {
+  opacity: 0.8;
+}
+
+.scene-pick.active {
+  opacity: 1;
+  filter: none;
+  cursor: default;
+}
+
+.scene-pick:focus-visible {
+  outline: var(--u) solid var(--accent-bright);
+  outline-offset: var(--u);
+}
+
 .tile {
   appearance: none;
   margin: 0;

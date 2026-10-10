@@ -2,8 +2,13 @@
 
 A Berkeley-themed pixel art world with ambient sounds for studying.
 
-Put it on the TV, add rain, a bird or the Campanile bell, and let it run in the
-background. Every sound belongs to something you can see in the scene.
+Put it on the TV, pick a spot around Berkeley, add rain, a bird or the
+Campanile bell, and let it run in the background. Every sound belongs to
+something you can see in the scene.
+
+There are three scenes: the Glade facing Doe Library, the patio of Caffè
+Strada, and the shore at the Berkeley Marina. The icons in the top-right label
+switch between them.
 
 ![The Glade at night with the controls showing: the Campanile is outlined with its control bar open](docs/screenshots/interface.png)
 
@@ -14,9 +19,9 @@ three times of day, each with its own people, light and four ambient elements.
 
 | Day | Sunset |
 | --- | --- |
-| ![Day: clear sky, people on the lawn, songbird and squirrel on the branch](docs/screenshots/day.png) | ![Sunset: pastel sky, guitar circle and picnic, mourning dove on the branch](docs/screenshots/sunset.png) |
+| ![Day: clear sky, people on the lawn, songbird and squirrel on the branch](docs/screenshots/glade-day.png) | ![Sunset: pastel sky, guitar circle and picnic, mourning dove on the branch](docs/screenshots/glade-sunset.png) |
 | **Night** | **Rain** |
-| ![Night: stars, moon, lit windows, deer on the lawn, owl on the branch, cricket on the grass](docs/screenshots/night.png) | ![Rain by day: overcast cloud deck replaces the sun and blue sky](docs/screenshots/rain.png) |
+| ![Night: stars, moon, lit windows, deer on the lawn, owl on the branch, cricket on the grass](docs/screenshots/glade-night.png) | ![Rain by day: overcast cloud deck replaces the sun and blue sky](docs/screenshots/glade-rain.png) |
 
 | Time | Elements |
 | --- | --- |
@@ -26,6 +31,47 @@ three times of day, each with its own people, light and four ambient elements.
 
 The third slot is always that time's bird. Rain turns the sky overcast in that
 time of day's own cloud colours and hides the sun, moon and stars.
+
+## Caffè Strada
+
+The patio of Caffè Strada at College and Bancroft, under flowering plum trees
+and string lights, with Cal banners on the street lamps and campus across
+Bancroft Way. An AC Transit bus pulls in to the stop every few minutes and
+cyclists ride past now and then; they are only scenery and make no sound.
+
+| Day | Sunset | Night |
+| --- | --- | --- |
+| ![Day: students at the patio tables, a house sparrow on the front railing](docs/screenshots/strada-day.png) | ![Sunset: pink sky, string lights on, a crow on the bannered lamp](docs/screenshots/strada-sunset.png) | ![Night: glowing lamps and string lights, lit windows across Bancroft, a cricket in the planter](docs/screenshots/strada-night.png) |
+
+| Time | Elements |
+| --- | --- |
+| Day | Rain, café chatter, house sparrow, laptop typing |
+| Sunset | Rain, café chatter, crow, laptop typing |
+| Night | Rain, café chatter, crickets, laptop typing |
+
+The chatter is a real café recording, so the clink of cups and spoons is part
+of it rather than a separate element. At sunset the crow stands in for
+Berkeley's evening crow flights; at night crickets chirp in the patio planter.
+
+## Berkeley Marina
+
+The grassy shore beside the Berkeley Marina pier, looking west
+across the bay to San Francisco and the Golden Gate Bridge. People fish from
+the pier, sailboats drift by, and sea lions haul out on a float.
+
+| Day | Sunset | Night |
+| --- | --- | --- |
+| ![Day: blue bay, sailboats, a western gull on the piling, sea lions on the float](docs/screenshots/marina-day.png) | ![Sunset: the sun setting between the Golden Gate towers, Canada geese on the grass](docs/screenshots/marina-sunset.png) | ![Night: moonlit water, bridge lights, a night heron on the piling](docs/screenshots/marina-night.png) |
+
+| Time | Elements |
+| --- | --- |
+| Day | Waves, foghorn, western gull, sea lions |
+| Sunset | Waves, foghorn, Canada geese, sea lions |
+| Night | Waves, foghorn, black-crowned night heron, sea lions |
+
+The waves are the foam lapping along the rocks; the foghorn is the fog bank
+over the Marin Headlands, sounding every 25 to 50 seconds. The people fishing
+are scenery only.
 
 ## Running
 
@@ -37,9 +83,14 @@ npm run build    # static build in dist/, no backend needed
 
 ## Using it
 
-- **Inventory (bottom centre):** the four elements for the current time of
-  day. Click a tile to add that element to the Glade; click it again to
-  remove it. Tiles for elements in the scene are outlined in blue.
+- **Top right:** the scene's name and three scene icons: a pine for the Glade,
+  a coffee cup for Caffè Strada and a sailboat for the Marina. Each scene keeps
+  its own elements, mute and volume while you're elsewhere. Switching fades
+  out the old scene's sounds; rain and crickets carry on without restarting
+  if they're also added in the new scene.
+- **Inventory (bottom centre):** the four elements for the current scene and
+  time of day. Click a tile to add that element to the scene; click it again
+  to remove it. Tiles for elements in the scene are outlined in blue.
 - **Scene objects:** hover a sprite to outline it and show its control bar
   (mute, volume down, level, volume up, remove). Changing the volume plays a
   short sample at the new level. Click to pin the bar; click elsewhere or press
@@ -88,19 +139,46 @@ between notes are silent. The adapted clips are shared under the same
 licenses as their sources. The dove and owl fall back to synthesised calls if
 their files fail to load.
 
+The Caffè Strada and Marina sounds are all recordings, cleaned the same way:
+band-limited to the useful range, with steady background noise gated out,
+trimmed to single calls, levelled, and faded in and out. Loops have their end
+crossfaded into their start so they repeat without a seam. These elements
+have no synthesised stand-in and stay silent if their file fails to load.
+
+| File | Source | Author | License |
+| --- | --- | --- | --- |
+| `chatter.mp3` | [Cafe ambiance](https://commons.wikimedia.org/wiki/File:Cafe_ambiance.ogg) | Marble Toast | [CC0](https://creativecommons.org/publicdomain/zero/1.0/) |
+| `typing.mp3` | [Laptop keyboard](https://commons.wikimedia.org/wiki/File:Laptop_keyboard.ogg) | russiandoll | Public domain |
+| `sparrow.mp3` | [House Sparrow, xeno-canto XC543237](https://commons.wikimedia.org/wiki/File:Passer_domesticus_-_House_Sparrow_XC543237.mp3) | Benoît Van Hecke | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
+| `crow.mp3` | [American Crow, xeno-canto XC115429](https://commons.wikimedia.org/wiki/File:Corvus_brachyrhynchos_-_American_Crow_XC115429.mp3) | Jonathon Jongsma | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) |
+| `waves.mp3` | [Water on Rocks](https://commons.wikimedia.org/wiki/File:Water_on_Rocks.ogg) | Dsw4 | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) |
+| `foghorn.mp3` | [Original foghorn at East Brother Island Lighthouse](https://commons.wikimedia.org/wiki/File:Original_foghorn_at_East_Brother_Island_Lighthouse.ogg) | Elwood P. Dowd | [CC0](https://creativecommons.org/publicdomain/zero/1.0/) |
+| `gull.mp3` | [Western Gull, Golden Gate National Recreation Area](https://commons.wikimedia.org/wiki/File:Western_Gull_Golden_Gate_National_Recreation_Area.ogg) | National Park Service | Public domain |
+| `geese.mp3` | [Geese Honking (distant)](https://commons.wikimedia.org/wiki/File:Geese_Honking_(distant).ogg) | U.S. Fish and Wildlife Service | Public domain |
+| `heron.mp3` | [Black-crowned Night Heron, xeno-canto XC481741](https://commons.wikimedia.org/wiki/File:Nycticorax_nycticorax_-_Black-crowned_Night_Heron_XC481741.mp3) | Jens Loose | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
+| `sealions.mp3` | [Sea lions at Pier 39 (video)](https://commons.wikimedia.org/wiki/File:Sea_lions_at_Pier_39_video.webm) | Mike Peel | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
+
+Clips adapted from CC BY and CC BY-SA sources are shared under the same
+licenses as their sources.
+
 ## Layout
 
-- `src/scene/` — the 320×180 logical scene: palettes, sprites, people on the
-  Glade, the backdrop layers (sky, Doe's north facade, lawn, canopies) and the
-  `World` renderer, which also owns silhouette masks for outlines and
-  hit-testing. The scene scales to cover the window, cropping at most 20% of
-  either axis.
+- `src/scenes.ts` — the scene registry: each scene's name, elements and their
+  control-bar anchors, inventory per time of day, tile art and page colours.
+- `src/scene/glade/`, `src/scene/strada/`, `src/scene/marina/` — one folder per
+  scene: its palette, sprites, backdrop layers and the `Stage` subclass that
+  animates and draws it.
+- `src/scene/` — what the scenes share on the 320×180 logical canvas: `Stage`
+  (silhouette masks for outlines and hit-testing), palettes and relighting,
+  stepped skies, the pixel painter, sprites, foliage and people. The scene
+  scales to cover the window, cropping at most 20% of either axis.
 - `src/audio/engine.ts` — Web Audio engine; `sync()` is idempotent so React
   rerenders cannot start duplicate loops. Editing it reloads the page, since
   hot reload would otherwise keep the old engine running.
-- `src/elements.ts` — element definitions and each time of day's inventory.
-- `src/state.ts` — element presence, mute, volume, time of day (day, sunset or night) and master volume.
+- `src/elements.ts` — element ids, per-element state and volume steps.
+- `src/state.ts` — the current scene, each scene's element presence, mute and
+  volume, the time of day (day, sunset or night) and master volume.
 - `src/ui/` — inventory, corner controls, anchored element bar and pixel icons.
-- `src/audio/sounds/` — audio recordings (the Campanile bell, mourning dove and owl).
+- `src/audio/sounds/` — audio recordings, credited above.
 - `docs/PRD.md` — product requirements, kept in step with the app.
 - `docs/screenshots/` — the images in this README.

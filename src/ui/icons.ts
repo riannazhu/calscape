@@ -40,6 +40,32 @@ export const PINE = fromRows(
   { L: 'pineLight', P: 'pine', p: 'pineDark', T: 'trunk' },
 );
 
+/** Coffee cup for the scene label. */
+export const CUP = fromRows(
+  [
+    '.S.S..',
+    'WCCCW.',
+    'WWWWWW',
+    'WWWW.W',
+    'WWWWW.',
+    '.WWW..',
+  ],
+  { W: 'shirtWhite', C: 'trunk', S: 'wispBase' },
+);
+
+/** Sailboat for the scene label. */
+export const BOAT = fromRows(
+  [
+    '...M..',
+    '..SMs.',
+    '.SSMs.',
+    'SSSMss',
+    '...M..',
+    'HHHHHH',
+  ],
+  { S: 'wispTop', s: 'stone', M: 'trunk', H: 'birdBody' },
+);
+
 export const SUNSET = [
   '.....#.....',
   '.#...#...#.',
@@ -128,54 +154,3 @@ export const EXIT_FULLSCREEN = [
   '..#...#..',
   '..#...#..',
 ];
-
-export const WIND_TILE = fromRows(
-  [
-    '....LLL......',
-    '..LLLLLLl....',
-    '.LLLLLLLll...',
-    '.LLLLLLlll.WW',
-    'LLLLLLllll...',
-    '.LLLLllll.WWW',
-    '..lllll......',
-    '.....T...WW..',
-    '.....T.......',
-    '....TTT......',
-  ],
-  { L: 'leafLight', l: 'leafMid', T: 'trunk', W: 'cloudLight' },
-);
-
-export const CLOUD_TILE = fromRows(
-  [
-    '....LLL......',
-    '..LLLLLLL....',
-    '.LLLLLLLLLL..',
-    'LLLLLLLLLLLL.',
-    'MMMMMMMMMMMMM',
-    '.DDDDDDDDDDD.',
-    '.............',
-    '..R...R...R..',
-    '..R...R...R..',
-    '....R...R....',
-    '....R...R....',
-  ],
-  { L: 'cloudLight', M: 'cloudMid', D: 'cloudDark', R: 'birdLight' },
-);
-
-export const BELL_TILE = fromRows(
-  [
-    '......O......',
-    '.....YGO.....',
-    '....YGGGO....',
-    '...YGGGGGO...',
-    '...YGGGGGO...',
-    '...YGGGGGO...',
-    '..YGGGGGGGO..',
-    '..YGGGGGGGO..',
-    '.YGGGGGGGGGO.',
-    'OOOOOOOOOOOOO',
-    '.....OKO.....',
-    '......O......',
-  ],
-  { Y: 'lampGlass', G: 'gold', O: 'campBell', K: 'clockHand' },
-);

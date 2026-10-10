@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import type { Sprite } from '../scene/sprites';
-import { DAY, type Palette } from '../scene/palette';
+import { DAY } from '../scene/glade/palette';
 
 interface Run {
   x: number;
@@ -52,13 +52,13 @@ export const Icon = memo(function Icon({ rows }: { rows: string[] }) {
   return <Svg w={w} h={rows.length} rs={rs} />;
 });
 
-/** Full-colour scene sprite, always in the day palette for legibility. */
+/** Full-colour sprite in a fixed palette; UI icons default to the Glade's daylight colours. */
 export const SpriteArt = memo(function SpriteArt({
   sprite,
   palette = DAY,
 }: {
   sprite: Sprite;
-  palette?: Palette;
+  palette?: Record<string, string>;
 }) {
   const rs = runs(sprite.w, sprite.h, (x, y) => {
     const k = sprite.px[y * sprite.w + x];

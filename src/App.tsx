@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { AudioEngine } from './audio/engine';
-import { ELEMENTS, ELEMENT_BY_ID, isActive, type ElementId, type ElementState } from './elements';
-import { H, W } from './scene/backdrop';
-import { PALETTES } from './scene/palette';
-import { World } from './scene/world';
-import { initialState, reducer } from './state';
+import type { ElementId, ElementState } from './elements';
+import { H, W, type SceneStage } from './scene/stage';
+import { ALL_ELEMENTS, SCENES, SCENE_BY_ID, isActive, type SceneId } from './scenes';
+import { elementsOf, initialState, reducer } from './state';
 import { BottomControls } from './ui/BottomControls';
 import { ElementBar } from './ui/ElementBar';
-import { BEAR, PINE } from './ui/icons';
+import { BEAR } from './ui/icons';
 import { SpriteArt } from './ui/PixelArt';
 import { useIdle } from './ui/useIdle';
 import { useStageScale } from './ui/useStageScale';
@@ -22,9 +21,10 @@ export function App() {
   const engineRef = useRef<AudioEngine>(null);
   engineRef.current ??= new AudioEngine();
   const engine = engineRef.current;
-  const worldRef = useRef<World>(null);
-  worldRef.current ??= new World();
-  const world = worldRef.current;
+  const scene = SCENE_BY_ID[state.scene];
+  const elements = elementsOf(state);
+  const stages = useRef<Partial<Record<SceneId, SceneStage>>>({});
+  const world = (stages.current[scene.id] ??= scene.create(scene.elements.map((e) => e.id)));
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const spriteTargets = useRef<Partial<Record<ElementId, HTMLButtonElement | null>>>({});
@@ -52,16 +52,16 @@ export function App() {
     return () => events.forEach((e) => window.removeEventListener(e, unlock, { capture: true }));
   }, [engine]);
 
-  // Elements added at another time of day rest silently and out of sight until it returns.
+  // Elements added at another time of day, or in another scene, rest silently and out of sight.
   const active = useMemo(
     () =>
       Object.fromEntries(
-        ELEMENTS.map((e) => {
-          const s = state.elements[e.id];
-          return [e.id, { ...s, present: isActive(state.time, e.id, s) }];
+        ALL_ELEMENTS.map((id) => {
+          const s = elements[id] ?? { present: false, muted: false, volume: 0 };
+          return [id, { ...s, present: isActive(scene, state.time, id, elements[id]) }];
         }),
       ) as Record<ElementId, ElementState>,
-    [state.elements, state.time],
+    [scene, elements, state.time],
   );
 
   useEffect(() => engine.sync(active), [engine, active]);
@@ -76,8 +76,8 @@ export function App() {
   useEffect(() => {
     world.time = state.time;
     world.highlight = highlight;
-    for (const e of ELEMENTS) world.present[e.id] = active[e.id].present;
-  }, [world, state.time, active, highlight]);
+    for (const e of scene.elements) world.present[e.id] = active[e.id].present;
+  }, [world, scene, state.time, active, highlight]);
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -185,8 +185,8 @@ export function App() {
     setFocusBarOnOpen(true);
   };
 
-  const bar = openId ? ELEMENT_BY_ID[openId] : null;
-  const pal = PALETTES[state.time];
+  const bar = openId ? scene.elements.find((e) => e.id === openId)! : null;
+  const [top, bottom] = scene.edges[state.time];
   const cursor = hovered ? 'pointer' : 'default';
 
   return (
@@ -194,11 +194,11 @@ export function App() {
       className={`app ${idle ? 'idle' : ''} ${state.time}`}
       style={{
         ['--u' as string]: `${uiUnit}px`,
-        ['--scene-top' as string]: pal.sky0,
-        ['--scene-bottom' as string]: pal.lawnMid,
+        ['--scene-top' as string]: top,
+        ['--scene-bottom' as string]: bottom,
       }}
     >
-      <h1 className="sr-only">CalScape: Glade facing Doe Library</h1>
+      <h1 className="sr-only">CalScape: {scene.title}</h1>
       <div className="stage" style={{ width: W * scale, height: H * scale }}>
         <canvas
           ref={canvasRef}
@@ -212,9 +212,9 @@ export function App() {
           aria-hidden="true"
         />
 
-        {ELEMENTS.filter((e) => active[e.id].present).map((e) => {
+        {scene.elements.filter((e) => active[e.id].present).map((e) => {
           const b = world.bounds(e.id);
-          const s = state.elements[e.id];
+          const s = elements[e.id];
           const status = s.muted ? 'muted' : `volume ${Math.round(s.volume * 100)}%`;
           return (
             <button
@@ -237,7 +237,7 @@ export function App() {
           <ElementBar
             key={bar.id}
             def={bar}
-            state={state.elements[bar.id]}
+            state={elements[bar.id]}
             scale={scale}
             autoFocus={focusBarOnOpen}
             onPointerEnter={() => {
@@ -249,7 +249,7 @@ export function App() {
               if (!pinned) startGrace();
             }}
             onPin={() => setPinned(bar.id)}
-            onPreview={(volume) => engine.preview(bar.id, volume, state.elements[bar.id].muted)}
+            onPreview={(volume) => engine.preview(bar.id, volume, elements[bar.id].muted)}
             dispatch={dispatch}
             afterRemove={() => {
               overBar.current = false;
@@ -268,9 +268,22 @@ export function App() {
           <SpriteArt sprite={BEAR} />
           <span className="brand">CalScape</span>
         </div>
-        <div className="chrome panel corner top-right">
-          <span>Glade</span>
-          <SpriteArt sprite={PINE} />
+        <div className="chrome panel corner top-right scenes" role="group" aria-label="Scene">
+          <span>{scene.name}</span>
+          {SCENES.map((s) => (
+            <button
+              key={s.id}
+              className={`scene-pick ${s.id === scene.id ? 'active' : ''}`}
+              aria-label={s.title}
+              aria-pressed={s.id === scene.id}
+              onClick={() => {
+                close();
+                dispatch({ type: 'setScene', scene: s.id });
+              }}
+            >
+              <SpriteArt sprite={s.icon} />
+            </button>
+          ))}
         </div>
 
         <BottomControls state={state} dispatch={dispatch} />

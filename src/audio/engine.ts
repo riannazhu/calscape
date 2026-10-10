@@ -1,12 +1,26 @@
 import type { ElementId, ElementState } from '../elements';
 import campanileUrl from './sounds/campanile.mp3';
+import chatterUrl from './sounds/chatter.mp3';
+import crowUrl from './sounds/crow.mp3';
 import doveUrl from './sounds/dove.mp3';
+import foghornUrl from './sounds/foghorn.mp3';
+import geeseUrl from './sounds/geese.mp3';
+import gullUrl from './sounds/gull.mp3';
+import heronUrl from './sounds/heron.mp3';
 import owlUrl from './sounds/owl.mp3';
+import sealionsUrl from './sounds/sealions.mp3';
+import sparrowUrl from './sounds/sparrow.mp3';
+import typingUrl from './sounds/typing.mp3';
+import wavesUrl from './sounds/waves.mp3';
 
 const FADE = 0.06;
 const STOP_FADE = 0.12;
 /** The tower tolls the hour with strikes about 4 s apart. */
 const STRIKE_SPACING = 4;
+/** Recorded loops carry this much of their own end before the start and start after the end. */
+const LOOP_PAD_S = 0.5;
+/** A recorded loop fades in when it starts, which may be after its file finishes loading. */
+const LOOP_FADE_IN_S = 0.8;
 
 /**
  * Everything is background: rain and breeze sit low as beds, and the animals
@@ -21,6 +35,16 @@ const BASE_LEVEL: Record<ElementId, number> = {
   wind: 0.18,
   crickets: 0.07,
   owl: 0.16,
+  chatter: 0.24,
+  typing: 0.14,
+  sparrow: 0.1,
+  crow: 0.12,
+  waves: 0.3,
+  foghorn: 0.13,
+  gull: 0.12,
+  geese: 0.12,
+  heron: 0.14,
+  sealions: 0.1,
 };
 /** Each sound comes from roughly where its sprite sits. */
 const PAN: Record<ElementId, number> = {
@@ -32,6 +56,16 @@ const PAN: Record<ElementId, number> = {
   wind: 0,
   crickets: 0,
   owl: -0.55,
+  chatter: 0,
+  typing: -0.6,
+  sparrow: 0.7,
+  crow: -0.1,
+  waves: 0.1,
+  foghorn: 0.6,
+  gull: -0.2,
+  geese: 0.35,
+  heron: -0.2,
+  sealions: 0.55,
 };
 const REVERB_SEND: Record<ElementId, number> = {
   rain: 0,
@@ -42,24 +76,55 @@ const REVERB_SEND: Record<ElementId, number> = {
   wind: 0,
   crickets: 0.15,
   owl: 0.18,
+  chatter: 0.05,
+  typing: 0,
+  sparrow: 0.06,
+  crow: 0.15,
+  waves: 0.05,
+  foghorn: 0.35,
+  gull: 0.12,
+  geese: 0.15,
+  heron: 0.15,
+  sealions: 0.12,
 };
 /** Elements that play a steady loop rather than scheduled events. */
-const LOOPED = new Set<ElementId>(['rain', 'crickets', 'wind']);
+const LOOPED = new Set<ElementId>(['rain', 'crickets', 'wind', 'chatter', 'typing', 'waves']);
+/** Loops that play a recording; they stay silent if it can't load. */
+const RECORDED_LOOPS = new Set<ElementId>(['chatter', 'typing', 'waves']);
+/** Callers with a synthesised stand-in for when their recording can't load. */
+const SYNTH_CALLS = new Set<ElementId>(['bird', 'squirrel', 'dove', 'owl']);
 /** Animals that call now and then: seconds between calls, shortest to longest. */
 const CALL_GAP_S: Partial<Record<ElementId, [number, number]>> = {
   bird: [8, 22],
   squirrel: [20, 50],
   dove: [25, 60],
   owl: [30, 75],
+  sparrow: [10, 24],
+  crow: [20, 50],
+  gull: [18, 45],
+  geese: [30, 70],
+  heron: [35, 80],
+  sealions: [25, 60],
+  foghorn: [25, 50],
 };
 /**
- * Recordings in ./sounds. If one fails to load, the element falls back to its
- * synthesised sound.
+ * Recordings in ./sounds. If one fails to load, a Glade element falls back to
+ * its synthesised sound and any other stays silent.
  */
 const SAMPLE_URLS: Partial<Record<ElementId, string>> = {
   bell: campanileUrl,
   owl: owlUrl,
   dove: doveUrl,
+  chatter: chatterUrl,
+  typing: typingUrl,
+  waves: wavesUrl,
+  sparrow: sparrowUrl,
+  crow: crowUrl,
+  gull: gullUrl,
+  geese: geeseUrl,
+  heron: heronUrl,
+  sealions: sealionsUrl,
+  foghorn: foghornUrl,
 };
 
 type Source = AudioScheduledSourceNode;
@@ -235,11 +300,13 @@ function strikesFor(hour24: number): number {
 /** Tracks scheduled sources so a channel can stop everything it started. */
 class SourceSet {
   private live = new Set<Source>();
+  stopped = false;
   add(s: Source) {
     this.live.add(s);
     s.addEventListener('ended', () => this.live.delete(s));
   }
   stopAll() {
+    this.stopped = true;
     for (const s of this.live) {
       try {
         s.stop();
@@ -267,6 +334,8 @@ export class AudioEngine {
   private cricketBuffer: AudioBuffer | null = null;
   private windBuffer: AudioBuffer | null = null;
   private samples: Partial<Record<ElementId, AudioBuffer>> = {};
+  /** Settles once a recording has loaded or failed. */
+  private loading: Partial<Record<ElementId, Promise<void>>> = {};
   /** Lets the scene animate an animal while it calls. */
   onCall: ((id: ElementId, ms: number) => void) | null = null;
 
@@ -282,7 +351,7 @@ export class AudioEngine {
       convolver.buffer = reverbImpulse(ctx, 3.2);
       this.reverb = ctx.createGain();
       this.reverb.connect(convolver).connect(this.master);
-      for (const [id, url] of Object.entries(SAMPLE_URLS)) void this.loadSample(ctx, id as ElementId, url);
+      for (const [id, url] of Object.entries(SAMPLE_URLS)) this.loading[id as ElementId] = this.loadSample(ctx, id as ElementId, url);
     }
     if (this.ctx.state === 'suspended') void this.ctx.resume();
   }
@@ -402,6 +471,7 @@ export class AudioEngine {
   }
 
   private loopSources(id: ElementId, ctx: AudioContext, dest: AudioNode, sources: SourceSet) {
+    if (RECORDED_LOOPS.has(id)) return this.recordedLoop(id, ctx, dest, sources);
     switch (id) {
       case 'crickets':
         return this.cricketSources(ctx, dest, sources);
@@ -430,6 +500,32 @@ export class AudioEngine {
     src.connect(filter).connect(dest);
     src.start(ctx.currentTime, Math.random() * buffer.duration);
     sources.add(src);
+  }
+
+  /** Loops a padded recording between its pad points, from a random place, once it has loaded. */
+  private recordedLoop(id: ElementId, ctx: AudioContext, dest: AudioNode, sources: SourceSet) {
+    const start = (buffer: AudioBuffer) => {
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      src.loop = true;
+      src.loopStart = LOOP_PAD_S;
+      src.loopEnd = buffer.duration - LOOP_PAD_S;
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0, ctx.currentTime);
+      env.gain.setTargetAtTime(1, ctx.currentTime, LOOP_FADE_IN_S / 3);
+      src.connect(env).connect(dest);
+      src.addEventListener('ended', () => env.disconnect());
+      src.start(ctx.currentTime, LOOP_PAD_S + Math.random() * (buffer.duration - 2 * LOOP_PAD_S));
+      sources.add(src);
+    };
+    void this.whenLoaded(id).then(() => {
+      const buffer = this.samples[id];
+      if (buffer && !sources.stopped) start(buffer);
+    });
+  }
+
+  private whenLoaded(id: ElementId) {
+    return this.loading[id] ?? Promise.resolve();
   }
 
   private createLoop(id: ElementId, ctx: AudioContext): Channel {
@@ -566,6 +662,7 @@ export class AudioEngine {
   /** One call from an animal; returns its length in seconds. */
   private phrase(id: ElementId, ctx: AudioContext, dest: AudioNode, sources: SourceSet): number {
     const sample = this.samples[id];
+    if (!sample && !SYNTH_CALLS.has(id)) return 0;
     const length = sample
       ? this.playSample(sample, ctx, dest, sources)
       : id === 'squirrel'
@@ -725,16 +822,20 @@ export class AudioEngine {
     const sources = new SourceSet();
     const [min, max] = CALL_GAP_S[id] ?? [10, 30];
     let timer = 0;
+    let stopped = false;
     const schedule = (delay: number) => {
       timer = window.setTimeout(() => {
         this.phrase(id, ctx, gain, sources);
         schedule((min + Math.random() * (max - min)) * 1000);
       }, delay);
     };
-    schedule(60);
+    void this.whenLoaded(id).then(() => {
+      if (!stopped) schedule(60);
+    });
     return {
       gain,
       stop: () => {
+        stopped = true;
         window.clearTimeout(timer);
         release(() => sources.stopAll());
       },

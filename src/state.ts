@@ -1,14 +1,13 @@
-import {
-  DEFAULT_MASTER,
-  DEFAULT_VOLUME,
-  ELEMENTS,
-  type ElementId,
-  type ElementState,
-} from './elements';
+import { DEFAULT_MASTER, DEFAULT_VOLUME, type ElementId, type ElementState } from './elements';
 import { timeForHour, type TimeOfDay } from './scene/palette';
+import { SCENES, type SceneId } from './scenes';
+
+type Elements = Partial<Record<ElementId, ElementState>>;
 
 export interface AppState {
-  elements: Record<ElementId, ElementState>;
+  scene: SceneId;
+  /** Each scene keeps its own elements, so switching away and back finds them as they were. */
+  scenes: Record<SceneId, Elements>;
   time: TimeOfDay;
   /** 0..1, multiplies every element gain. */
   master: number;
@@ -22,6 +21,7 @@ export type Action =
   | { type: 'toggleMute'; id: ElementId }
   | { type: 'setVolume'; id: ElementId; volume: number }
   | { type: 'setTime'; time: TimeOfDay }
+  | { type: 'setScene'; scene: SceneId }
   | { type: 'setMaster'; master: number }
   | { type: 'toggleMasterMute' };
 
@@ -31,29 +31,38 @@ const absent = (): ElementState => ({ present: false, muted: false, volume: DEFA
 
 export function initialState(): AppState {
   return {
-    elements: Object.fromEntries(ELEMENTS.map((e) => [e.id, absent()])) as Record<ElementId, ElementState>,
+    scene: 'glade',
+    scenes: Object.fromEntries(
+      SCENES.map((s) => [s.id, Object.fromEntries(s.elements.map((e) => [e.id, absent()]))]),
+    ) as Record<SceneId, Elements>,
     time: timeForHour(new Date().getHours()),
     master: DEFAULT_MASTER,
     masterMuted: false,
   };
 }
 
+/** The current scene's elements. */
+export const elementsOf = (s: AppState) => s.scenes[s.scene] as Record<ElementId, ElementState>;
+
 function patch(s: AppState, id: ElementId, p: Partial<ElementState>): AppState {
-  return { ...s, elements: { ...s.elements, [id]: { ...s.elements[id], ...p } } };
+  const els = elementsOf(s);
+  return { ...s, scenes: { ...s.scenes, [s.scene]: { ...els, [id]: { ...els[id], ...p } } } };
 }
 
 export function reducer(s: AppState, a: Action): AppState {
   switch (a.type) {
     case 'add':
-      return s.elements[a.id].present ? s : patch(s, a.id, { present: true, muted: false });
+      return elementsOf(s)[a.id].present ? s : patch(s, a.id, { present: true, muted: false });
     case 'remove':
       return patch(s, a.id, { present: false });
     case 'toggleMute':
-      return patch(s, a.id, { muted: !s.elements[a.id].muted });
+      return patch(s, a.id, { muted: !elementsOf(s)[a.id].muted });
     case 'setVolume':
       return patch(s, a.id, { volume: clamp01(a.volume) });
     case 'setTime':
       return { ...s, time: a.time };
+    case 'setScene':
+      return { ...s, scene: a.scene };
     case 'setMaster':
       return { ...s, master: clamp01(a.master) };
     case 'toggleMasterMute':

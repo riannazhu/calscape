@@ -1,17 +1,17 @@
-import type { Palette, PaletteKey } from './palette';
+import type { Palette } from './palette';
 import { mulberry32 } from './pixels';
 
-/** A pixel sprite: palette keys per pixel, `null` for transparent. */
-export interface Sprite {
+/** A pixel sprite: colour names per pixel, `null` for transparent. */
+export interface Sprite<K extends string = string> {
   w: number;
   h: number;
-  px: (PaletteKey | null)[];
+  px: (K | null)[];
 }
 
-export function fromRows(rows: string[], legend: Record<string, PaletteKey>): Sprite {
+export function fromRows<K extends string>(rows: string[], legend: Record<string, K>): Sprite<K> {
   const h = rows.length;
   const w = Math.max(...rows.map((r) => r.length));
-  const px: (PaletteKey | null)[] = new Array(w * h).fill(null);
+  const px: (K | null)[] = new Array(w * h).fill(null);
   rows.forEach((row, y) => {
     for (let x = 0; x < row.length; x++) {
       const key = legend[row[x]];
@@ -21,7 +21,7 @@ export function fromRows(rows: string[], legend: Record<string, PaletteKey>): Sp
   return { w, h, px };
 }
 
-export function flipX(s: Sprite): Sprite {
+export function flipX<K extends string>(s: Sprite<K>): Sprite<K> {
   const px = s.px.slice();
   for (let y = 0; y < s.h; y++) {
     for (let x = 0; x < s.w; x++) px[y * s.w + x] = s.px[y * s.w + (s.w - 1 - x)];
@@ -34,12 +34,12 @@ export function opaque(s: Sprite, x: number, y: number): boolean {
   return s.px[y * s.w + x] !== null;
 }
 
-export function drawSprite(
+export function drawSprite<K extends string>(
   ctx: CanvasRenderingContext2D,
-  s: Sprite,
+  s: Sprite<K>,
   ox: number,
   oy: number,
-  pal: Palette,
+  pal: Palette<K>,
 ) {
   for (let y = 0; y < s.h; y++) {
     for (let x = 0; x < s.w; x++) {
@@ -51,17 +51,19 @@ export function drawSprite(
   }
 }
 
-function blank(w: number, h: number) {
-  const px: (PaletteKey | null)[] = new Array(w * h).fill(null);
-  const set = (x: number, y: number, k: PaletteKey) => {
+export function blank<K extends string>(w: number, h: number) {
+  const px: (K | null)[] = new Array(w * h).fill(null);
+  const set = (x: number, y: number, k: K) => {
     if (x >= 0 && y >= 0 && x < w && y < h) px[y * w + x] = k;
   };
-  return { sprite: { w, h, px } as Sprite, set };
+  return { sprite: { w, h, px } as Sprite<K>, set };
 }
 
+type CloudKey = 'cloudLight' | 'cloudMid' | 'cloudShade' | 'cloudDark';
+
 /** A puffy rain cloud: round bumps on a flat slab, lit from the top left. */
-function rainCloud(w: number, h: number, seed: number): Sprite {
-  const { sprite, set } = blank(w, h);
+export function rainCloud(w: number, h: number, seed: number): Sprite<CloudKey> {
+  const { sprite, set } = blank<CloudKey>(w, h);
   const rng = mulberry32(seed);
   const n = Math.max(3, Math.round(w / 13));
   const bumps: [number, number, number][] = [];
@@ -84,7 +86,7 @@ function rainCloud(w: number, h: number, seed: number): Sprite {
       const slabInset = y >= h - 2 ? 5 : 3;
       if (y >= h - 6 && x >= slabInset && x < w - slabInset) inside = true;
       if (!inside) continue;
-      let key: PaletteKey = lit ? 'cloudLight' : 'cloudMid';
+      let key: CloudKey = lit ? 'cloudLight' : 'cloudMid';
       if (y >= h - 5) key = 'cloudShade';
       if (y >= h - 2) key = 'cloudDark';
       set(x, y, key);
@@ -93,271 +95,44 @@ function rainCloud(w: number, h: number, seed: number): Sprite {
   return sprite;
 }
 
-/** A front of rain clouds spread across the sky so the rain covers the Glade. */
-export const RAIN_CLOUDS: { sprite: Sprite; x: number; y: number }[] = (
-  [
-    [56, 16, -6, 40],
-    [60, 18, 48, 24],
-    [66, 20, 108, 8],
-    [60, 18, 172, 22],
-    [58, 16, 232, 32],
-    [48, 16, 286, 44],
-  ] as const
-).map(([w, h, x, y], i) => ({ sprite: rainCloud(w, h, i + 1), x, y }));
+type WispKey = 'wispTop' | 'wispMid' | 'wispBase';
 
 /** A flat cloud streak: pale top, soft body and an underside lit from below. */
-function wisp(w: number, rows: [number, number][]): Sprite {
-  const keys: PaletteKey[] = ['wispTop', 'wispMid', 'wispMid', 'wispBase'];
-  const { sprite, set } = blank(w, rows.length);
+export function wisp(w: number, rows: [number, number][]): Sprite<WispKey> {
+  const keys: WispKey[] = ['wispTop', 'wispMid', 'wispMid', 'wispBase'];
+  const { sprite, set } = blank<WispKey>(w, rows.length);
   rows.forEach(([a, b], y) => {
     for (let x = Math.round(a * w); x < Math.round(b * w); x++) set(x, y, keys[Math.min(y, 3)]);
   });
   return sprite;
 }
 
-export const WISPS: { sprite: Sprite; y: number; x0: number; speed: number }[] = [
-  { sprite: wisp(34, [[0.3, 0.6], [0.12, 0.85], [0, 1], [0.15, 0.7]]), y: 42, x0: 30, speed: 1 / 8 },
-  { sprite: wisp(22, [[0.35, 0.7], [0.1, 1], [0.2, 0.8]]), y: 58, x0: 210, speed: 1 / 10 },
-  { sprite: wisp(48, [[0.2, 0.45], [0.05, 0.75], [0, 1], [0.1, 0.9]]), y: 72, x0: 110, speed: 1 / 9 },
-  { sprite: wisp(28, [[0.4, 0.75], [0.15, 0.9], [0, 1], [0.25, 0.65]]), y: 88, x0: 270, speed: 1 / 12 },
-  { sprite: wisp(40, [[0.25, 0.55], [0.05, 0.8], [0.1, 1]]), y: 100, x0: 170, speed: 1 / 14 },
-  { sprite: wisp(26, [[0.3, 0.7], [0, 0.9], [0.2, 1]]), y: 52, x0: 100, speed: 1 / 11 },
-  { sprite: wisp(36, [[0.35, 0.6], [0.1, 0.9], [0, 1], [0.2, 0.75]]), y: 93, x0: 40, speed: 1 / 13 },
-];
-
-/** Extra streaks that only gather at sunset. */
-export const SUNSET_WISPS: typeof WISPS = [
-  { sprite: wisp(30, [[0.3, 0.65], [0.05, 0.9], [0.15, 1]]), y: 32, x0: 200, speed: 1 / 9 },
-  { sprite: wisp(44, [[0.2, 0.5], [0, 0.8], [0.05, 1], [0.3, 0.85]]), y: 64, x0: 20, speed: 1 / 11 },
-  { sprite: wisp(24, [[0.3, 0.7], [0, 1], [0.25, 0.8]]), y: 80, x0: 240, speed: 1 / 10 },
-  { sprite: wisp(32, [[0.4, 0.7], [0.1, 0.95], [0, 1]]), y: 47, x0: 330, speed: 1 / 12 },
-  { sprite: wisp(50, [[0.25, 0.6], [0.05, 0.85], [0, 1], [0.2, 0.9]]), y: 106, x0: 300, speed: 1 / 15 },
-];
-
-/**
- * Sather Tower, front face: gold finial and lantern, pyramidal copper spire,
- * belfry with three arched openings, clock stage and a long granite shaft.
- */
-function campanile(): Sprite {
-  const w = 16;
-  const h = 80;
-  const { sprite, set } = blank(w, h);
-  const wall = (x: number): PaletteKey => (x >= 12 ? (x === 15 ? 'campDark' : 'campShadow') : x === 0 ? 'campMid' : 'campLight');
-
-  // Finial and lantern.
-  set(7, 0, 'gold');
-  for (let x = 6; x <= 8; x++) set(x, 1, 'gold');
-  set(7, 2, 'gold');
-  for (let y = 3; y < 6; y++) for (let x = 6; x <= 8; x++) set(x, y, x === 8 ? 'campShadow' : 'campLight');
-  set(7, 4, 'campArch');
-
-  // Spire: left face lit, right face in shade, a bright ridge down the middle.
-  for (let y = 6; y < 26; y++) {
-    const half = 1.5 + ((y - 6) / 19) * 6;
-    const x0 = Math.round(7.5 - half);
-    const x1 = Math.round(7.5 + half) - 1;
-    for (let x = x0; x <= x1; x++) {
-      let key: PaletteKey = x < 8 ? 'copper' : 'copperDark';
-      if (x === x0 || x === 7) key = 'copperLight';
-      else if (x < 7 && (y - 6) % 5 === 4) key = 'copperDark';
-      set(x, y, key);
-    }
-  }
-
-  // Cornice under the spire.
-  for (let x = 0; x < w; x++) {
-    set(x, 26, x >= 12 ? 'campShadow' : 'campLight');
-    set(x, 27, x % 2 === 0 ? 'campDark' : x >= 12 ? 'campShadow' : 'campMid');
-  }
-
-  // Belfry with three arched openings and the bells inside.
-  for (let y = 28; y < 40; y++) for (let x = 0; x < w; x++) set(x, y, wall(x));
-  for (const [a, b] of [
-    [2, 4],
-    [6, 9],
-    [11, 13],
-  ]) {
-    for (let y = 29; y < 39; y++) {
-      for (let x = a; x <= b; x++) {
-        if (y === 29 && (x === a || x === b)) continue;
-        set(x, y, 'campArch');
-      }
-    }
-    const mid = Math.floor((a + b) / 2);
-    set(mid, 31, 'campBell');
-    for (let x = mid - (b - a > 2 ? 1 : 0); x <= mid + 1 && x <= b; x++) set(x, 32, 'campBell');
-  }
-
-  // Balcony rail.
-  for (let x = 0; x < w; x++) {
-    set(x, 40, x >= 12 ? 'campShadow' : 'campLight');
-    set(x, 41, x % 2 === 0 ? 'campDark' : wall(x));
-    set(x, 42, 'campShadow');
-  }
-
-  // Clock stage.
-  for (let y = 43; y < 53; y++) for (let x = 0; x < w; x++) set(x, y, wall(x));
-  for (let y = 43; y < 53; y++) {
-    for (let x = 2; x < 13; x++) {
-      const d = Math.hypot(x + 0.5 - 7.5, y + 0.5 - 47.5);
-      if (d < 4) set(x, y, d > 3 ? 'campDark' : 'clockFace');
-    }
-  }
-  for (let y = 45; y < 48; y++) set(7, y, 'clockHand');
-  set(8, 47, 'clockHand');
-  set(9, 47, 'clockHand');
-  for (let x = 0; x < w; x++) set(x, 53, x >= 12 ? 'campDark' : 'campMid');
-
-  // Long shaft with corner piers and narrow slit windows.
-  for (let y = 54; y < h; y++) {
-    for (let x = 0; x < w; x++) set(x, y, x === 2 || x === 11 ? 'campMid' : wall(x));
-  }
-  for (const top of [57, 66, 75]) {
-    for (let y = top; y < top + 4; y++) {
-      set(6, y, 'campArch');
-      set(7, y, 'campArch');
-    }
-  }
-  return sprite;
+export interface Drifter<K extends string> {
+  sprite: Sprite<K>;
+  y: number;
+  x0: number;
+  /** Pixels per second. */
+  speed: number;
 }
 
-export const CAMPANILE = campanile();
+/** Draws clouds that drift right and wrap around the scene's width. */
+export function drawDrifters<K extends string>(
+  ctx: CanvasRenderingContext2D,
+  list: Drifter<K>[],
+  t: number,
+  pal: Palette<K>,
+  width: number,
+  pace = 1,
+) {
+  for (const w of list) {
+    const span = width + w.sprite.w + 40;
+    const x = Math.floor(((w.x0 + t * w.speed * pace) % span) - w.sprite.w);
+    drawSprite(ctx, w.sprite, x, w.y, pal);
+  }
+}
 
-const BIRD_LEGEND: Record<string, PaletteKey> = {
-  B: 'birdBody',
-  L: 'birdLight',
-  D: 'birdDark',
-  W: 'birdBelly',
-  K: 'beak',
-  E: 'eye',
-};
-
-/** A California scrub jay, facing right. Feet sit on the bottom row. */
-export const BIRD_IDLE = fromRows(
-  [
-    '....BBB....',
-    '...BLLBB...',
-    '...BLBEBKK.',
-    '..DBBBBW...',
-    '.DDLLBWWW..',
-    'DD.DLBWWW..',
-    'D...DBWW...',
-    '.....K.K...',
-  ],
-  BIRD_LEGEND,
-);
-
-export const BIRD_SING = fromRows(
-  [
-    '....BBB....',
-    '...BLLBB.K.',
-    '...BLBEBK..',
-    '..DBBBBWK..',
-    '.DDLLBWWW..',
-    'DD.DLBWWW..',
-    'D...DBWW...',
-    '.....K.K...',
-  ],
-  BIRD_LEGEND,
-);
-
-/** A tiny field cricket on the path, facing left; the second frame lifts its wings to chirp. */
-const CRICKET_LEGEND: Record<string, PaletteKey> = { A: 'eye', H: 'eye', B: 'deerDark', W: 'basket', K: 'deer', L: 'eye' };
-
-export const CRICKET = [
-  fromRows(['A.....', '.HBWKK', 'L.L.L.'], CRICKET_LEGEND),
-  fromRows(['A..W..', '.HWBKK', 'L.L.L.'], CRICKET_LEGEND),
-];
-
-/** A great horned owl facing out: open, blinking and hooting with a puffed white throat. */
-const OWL_LEGEND: Record<string, PaletteKey> = { B: 'deer', D: 'deerDark', L: 'deerLight', G: 'gold', E: 'eye' };
-const owl = (eyes: string, throat: string[]) =>
-  fromRows(['D.....D', 'DBBBBBD', 'BLLBLLB', eyes, 'BLLDLLB', ...throat, '..BBB..', '..D.D..'], OWL_LEGEND);
-
-export const OWL = {
-  open: owl('LGELEGL', ['.BLLLB.', '.BLDLB.']),
-  blink: owl('LDDLDDL', ['.BLLLB.', '.BLDLB.']),
-  hoot: owl('LGELEGL', ['BLLLLLB', '.BLLLB.']),
-};
-
-/**
- * A mourning dove facing right like the songbird on the same branch: small
- * head, pink-buff breast, black wing spots and a long pointed tail. The second
- * frame lowers the head and puffs the breast to coo.
- */
-const DOVE_LEGEND: Record<string, PaletteKey> = { B: 'dove', D: 'doveDark', L: 'doveLight', E: 'eye', K: 'doveDark' };
-
-export const DOVE = [
-  fromRows(
-    ['........BB.', '.......BEBK', '.......BBB.', '..BBBBBLLB.', 'DDBDBBLLLB.', 'D..BBDBLL..', '....BBBB...', '.....D.D...'],
-    DOVE_LEGEND,
-  ),
-  fromRows(
-    ['...........', '........BB.', '.......BEBK', '..BBBBLLLB.', 'DDBDBLLLLL.', 'D..BBDLLLL.', '....BBBB...', '.....D.D...'],
-    DOVE_LEGEND,
-  ),
-];
-
-/** A fox squirrel facing left, tail curled over its back; the second frame flicks the tail. */
-const SQUIRREL_LEGEND: Record<string, PaletteKey> = { B: 'deer', D: 'deerDark', L: 'deerLight', E: 'eye' };
-
-export const SQUIRREL = [
-  fromRows(
-    ['........DDD.', '.D.....DBBBD', 'BBB....DBLBD', 'BEBB...DBBD.', 'BBBBB..DBD..', '.LLBBBBBD...', '..LLBBBBD...', '..B.B..BB...'],
-    SQUIRREL_LEGEND,
-  ),
-  fromRows(
-    ['.........DDD', '.D......DBBB', 'BBB.....DBLB', 'BEBB....DBBD', 'BBBBB..DBD..', '.LLBBBBBD...', '..LLBBBBD...', '..B.B..BB...'],
-    SQUIRREL_LEGEND,
-  ),
-];
-
-const DEER_LEGEND: Record<string, PaletteKey> = {
-  B: 'deer',
-  D: 'deerDark',
-  L: 'deerLight',
-  E: 'eye',
-};
-
-/**
- * A spotted doe, facing right: big ears, cream spots along a russet back, pale
- * belly and a flicked-up tail. Hooves sit on the bottom row.
- */
-const DOE_TOP = [
-  '.........D..D..',
-  '.........BB.B..',
-  '..........BBB..',
-  '..........BEBB.',
-  '..........BBBBD',
-  '.........BB....',
-  'L........BB....',
-  'BBBLBBLBBBB....',
-  'BLBBBLBBLBB....',
-  '.BBBBBBBBBL....',
-  '.BLLLLLLLB.....',
-];
-
-export const DEER_WALK = [
-  fromRows([...DOE_TOP, '.B.B....B.B....', '.B.B....B.B....', '.D.D....D.D....'], DEER_LEGEND),
-  fromRows([...DOE_TOP, '..BB.....BB....', '..BB.....BB....', '..DD.....DD....'], DEER_LEGEND),
-];
-
-export const DEER_GRAZE = fromRows(
-  [
-    '...............',
-    '...............',
-    '...............',
-    '...............',
-    '...............',
-    '...............',
-    'L..............',
-    'BBBLBBLBBBB....',
-    'BLBBBLBBLBBB...',
-    '.BBBBBBBBBBBD..',
-    '.BLLLLLLLBBBBD.',
-    '.B.B....B.BEBBD',
-    '.B.B....B.B....',
-    '.D.D....D.D....',
-  ],
-  DEER_LEGEND,
-);
+/** A tiny field cricket facing left; the second frame lifts its wings to chirp. */
+export function cricket<K extends string>(legend: { eye: K; body: K; wing: K; leg: K }): Sprite<K>[] {
+  const keys = { E: legend.eye, B: legend.body, W: legend.wing, K: legend.leg };
+  return [fromRows(['E.....', '.EBWKK', 'E.E.E.'], keys), fromRows(['E..W..', '.EWBKK', 'E.E.E.'], keys)];
+}

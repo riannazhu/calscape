@@ -1,49 +1,12 @@
-import type { PaletteKey, TimeOfDay } from './palette';
-import type { Painter } from './pixels';
-import { flipX, fromRows, type Sprite } from './sprites';
+import { person, type Figure } from '../figures';
+import type { TimeOfDay } from '../palette';
+import type { Painter } from '../pixels';
+import { fromRows } from '../sprites';
+import type { GladeKey } from './palette';
 
-interface Look {
-  hair: PaletteKey;
-  skin: PaletteKey;
-  top: PaletteKey;
-  pants?: PaletteKey;
-}
-
-/**
- * Poses face right; H hair, S skin, T top, P trousers, D shoes, G guitar,
- * and an open book held up: C cover, W pages.
- */
-const POSES = {
-  stand: ['.HHH.', '.HSS.', '..S..', '.TTT.', 'TTTTT', 'STTTS', '.PPP.', '.P.P.', '.D.D.'],
-  crouch: ['.HHH.', '.HSS.', '.TTT.', 'STTTS', '.PPP.', 'P...P', 'D...D'],
-  sit: ['.HH...', 'HSS...', '.TT...', '.TTS..', '.PPPPD'],
-  sitBack: ['.HHH.', '.HHH.', 'TTTTT', 'TTTTT', 'PPPPP'],
-  read: ['.HH.....', 'HSS.CWWC', '.TTSCWWC', '.TTTS...', '.PPPPPD.'],
-  lie: ['HHSTTTTPPPD', 'HHSTTTTPPPD'],
-  guitar: ['.HH.....', 'HSS.....', '.TT..G..', '.TGGGGGS', '.GGGPPPD'],
-};
-
-function person(pose: keyof typeof POSES, look: Look, facingLeft = false): Sprite {
-  const s = fromRows(POSES[pose], {
-    H: look.hair,
-    S: look.skin,
-    T: look.top,
-    P: look.pants ?? 'pants',
-    D: 'shoe',
-    C: 'shirtBlue',
-    W: 'shirtWhite',
-    G: 'basket',
-  });
-  return facingLeft ? flipX(s) : s;
-}
+type Placed = Figure<GladeKey>;
 
 const BASKET = fromRows(['.bb.', 'b..b', 'bbbb', 'bbbb'], { b: 'basket' });
-
-export interface Placed {
-  sprite: Sprite;
-  x: number;
-  y: number;
-}
 
 /** The spikeball net and where each player's hands meet the ball. */
 export const SPIKEBALL = {
@@ -95,7 +58,7 @@ export function peopleFor(time: TimeOfDay): Placed[] {
 }
 
 /** Checked picnic blanket under the two sitters, drawn before the people. */
-export function drawBlanket(p: Painter) {
+export function drawBlanket(p: Painter<GladeKey>) {
   for (let r = 0; r < 5; r++) {
     const y = 146 + r;
     for (let x = 44 - r; x <= 67 - r; x++) {
@@ -105,7 +68,7 @@ export function drawBlanket(p: Painter) {
 }
 
 /** The round spikeball net on its little legs. */
-export function drawNet(p: Painter) {
+export function drawNet(p: Painter<GladeKey>) {
   const { x, y } = SPIKEBALL.net;
   for (let dx = -4; dx <= 4; dx++) {
     const edge = Math.abs(dx) === 4;
@@ -115,13 +78,4 @@ export function drawNet(p: Painter) {
   }
   p.set(x - 3, y + 2, 'netMesh');
   p.set(x + 3, y + 2, 'netMesh');
-}
-
-export function stamp(p: Painter, { sprite, x, y }: Placed) {
-  for (let j = 0; j < sprite.h; j++) {
-    for (let i = 0; i < sprite.w; i++) {
-      const key = sprite.px[j * sprite.w + i];
-      if (key) p.set(x + i, y + j, key);
-    }
-  }
 }

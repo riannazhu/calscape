@@ -1,9 +1,13 @@
-import type { Palette, PaletteKey, TimeOfDay } from './palette';
-import { drawBlanket, drawNet, peopleFor, stamp } from './people';
-import { Painter, hash, mix, mulberry32, noise, rgb, type RGB } from './pixels';
+import { stamp } from '../figures';
+import { blob, branch } from '../foliage';
+import type { Palette, TimeOfDay } from '../palette';
+import { Painter, hash, mulberry32, noise, rgb, type RGB } from '../pixels';
+import { clamp01, glowAt, overcastSky, steppedSky, type Glow, type Sky } from '../sky';
+import { H, W } from '../stage';
+import type { GladeKey } from './palette';
+import { drawBlanket, drawNet, peopleFor } from './people';
 
-export const W = 320;
-export const H = 180;
+type P = Painter<GladeKey>;
 
 /** High in the east at midday, sinking behind the far trees at sunset. */
 export const SUN: Record<'day' | 'sunset', { x: number; y: number; r: number }> = {
@@ -18,18 +22,16 @@ export const PERCH = { x: 36, feetY: 42 };
 /** Top row of the lawn: a gentle rise that crests in front of Doe. */
 export const lawnTop = (x: number) => Math.round(131 + 12 * ((x - 175) / 175) ** 2);
 
-const SKY_KEYS: PaletteKey[] = ['sky0', 'sky1', 'sky2', 'sky3', 'sky4', 'sky5'];
+const SKY_KEYS: GladeKey[] = ['sky0', 'sky1', 'sky2', 'sky3', 'sky4', 'sky5'];
 
 /** Colour ramps from the deepest sky to its brightest point. */
-const SKY_RAMP: Record<TimeOfDay, PaletteKey[]> = {
+const SKY_RAMP: Record<TimeOfDay, GladeKey[]> = {
   day: SKY_KEYS,
   sunset: [...SKY_KEYS, 'glow', 'sun'],
   night: SKY_KEYS,
 };
 /** How many solid colour steps each ramp is broken into. */
 const SKY_LEVELS: Record<TimeOfDay, number> = { day: 22, sunset: 34, night: 16 };
-
-const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
 /**
  * Where a point sits on its sky ramp, 0 deepest to 1 brightest. Sunset bands
@@ -44,7 +46,7 @@ function skyField(time: TimeOfDay, x: number, y: number) {
 }
 
 /** Stepped rings of light: a soft wash around the moon, a subtle glow around the sun. */
-const SKY_GLOWS: Partial<Record<TimeOfDay, { x: number; y: number; r: number; a: number; steps: number }[]>> = {
+const SKY_GLOWS: Record<TimeOfDay, Glow[]> = {
   night: [
     { x: MOON.x, y: MOON.y, r: 40, a: 0.35, steps: 4 },
     { x: MOON.x, y: MOON.y, r: 14, a: 0.45, steps: 2 },
@@ -53,55 +55,31 @@ const SKY_GLOWS: Partial<Record<TimeOfDay, { x: number; y: number; r: number; a:
   sunset: [{ x: SUN.sunset.x, y: SUN.sunset.y, r: 18, a: 0.45, steps: 3 }],
 };
 
-/** Fade for a stepped glow ring at normalised distance `d` (0 centre, 1 edge). */
-function glowAt(d: number, steps: number) {
-  if (d >= 1) return 0;
-  const q = (Math.floor(d * steps) + 0.5) / steps;
-  return (1 - q) ** 2;
-}
+const skies = new Map<TimeOfDay, Sky>();
 
-/**
- * The sky colour at a pixel. Each 2x2 block takes one solid step of the ramp;
- * smooth noise wobbles the step edges so the bands read as natural, not ruled.
- */
-export function skyColor(time: TimeOfDay, pal: Palette, x: number, y: number): RGB {
-  const bx = x >> 1;
-  const by = y >> 1;
-  const cx = bx * 2 + 1;
-  const cy = by * 2 + 1;
-  const levels = SKY_LEVELS[time];
-  const wobble = (noise(bx, by, 5, 41) - 0.5) * 1.2 + (hash(bx, by, 42) - 0.5) * 0.35;
-  const q = clamp01(Math.round(skyField(time, cx, cy) * levels + wobble) / levels);
-  const ramp = SKY_RAMP[time];
-  const at = q * (ramp.length - 1);
-  const i = Math.min(ramp.length - 2, Math.floor(at));
-  let c = mix(rgb(pal[ramp[i]]), rgb(pal[ramp[i + 1]]), at - i);
-  for (const g of SKY_GLOWS[time] ?? []) {
-    c = mix(c, rgb(pal.glow), g.a * glowAt(Math.hypot(cx - g.x, cy - g.y) / g.r, g.steps));
+/** The clear sky colour at a pixel. */
+export function skyColor(time: TimeOfDay, pal: Palette<GladeKey>, x: number, y: number): RGB {
+  let sky = skies.get(time);
+  if (!sky) {
+    sky = {
+      ramp: SKY_RAMP[time].map((k) => rgb(pal[k])),
+      levels: SKY_LEVELS[time],
+      field: (fx, fy) => skyField(time, fx, fy),
+      glows: SKY_GLOWS[time],
+      glow: rgb(pal.glow),
+    };
+    skies.set(time, sky);
   }
-  return c;
+  return steppedSky(sky, x, y);
 }
 
-const OVERCAST_RAMP: PaletteKey[] = ['cloudDark', 'cloudShade', 'cloudMid'];
 /** How much of the clear sky still tints the cloud deck, so the hour stays legible. */
 const OVERCAST_SKY_SHOW: Record<TimeOfDay, number> = { day: 0.12, sunset: 0.35, night: 0.3 };
 
-/**
- * A rainy sky: a low deck of cloud, brightest toward the horizon, mottled
- * into soft billows in 2x2 blocks. No sun, moon or stars break through.
- */
-function overcastColor(time: TimeOfDay, pal: Palette, x: number, y: number): RGB {
-  const bx = x >> 1;
-  const by = y >> 1;
-  const levels = 12;
-  const billow = (noise(bx, by * 2, 9, 61) - 0.5) * 0.5 + (noise(bx, by, 4, 62) - 0.5) * 0.25;
-  const wobble = (hash(bx, by, 63) - 0.5) * 0.3;
-  const v = clamp01((by * 2 + 1) / 122 + billow);
-  const q = clamp01(Math.round(v * levels + wobble) / levels);
-  const at = q * (OVERCAST_RAMP.length - 1);
-  const i = Math.min(OVERCAST_RAMP.length - 2, Math.floor(at));
-  const cloud = mix(rgb(pal[OVERCAST_RAMP[i]]), rgb(pal[OVERCAST_RAMP[i + 1]]), at - i);
-  return mix(cloud, skyColor(time, pal, x, y), OVERCAST_SKY_SHOW[time]);
+/** A rainy sky: a low cloud deck with no sun, moon or stars breaking through. */
+function overcastColor(time: TimeOfDay, pal: Palette<GladeKey>, x: number, y: number): RGB {
+  const deck = (['cloudDark', 'cloudShade', 'cloudMid'] as const).map((k) => rgb(pal[k]));
+  return overcastSky(deck, skyColor(time, pal, x, y), OVERCAST_SKY_SHOW[time], 122, x, y);
 }
 
 type Clump = [x: number, y: number, r: number];
@@ -131,31 +109,7 @@ export const STARS = Array.from({ length: 80 }, () => {
   return s;
 }).filter((s) => Math.hypot(s.x - MOON.x, s.y - MOON.y) > 10 && !underCanopy(s.x, s.y));
 
-/** A chunky clump of leaves drawn in 2x2 blocks, lit from the upper left. */
-function blob(p: Painter, cx: number, cy: number, r: number, seed: number, shade = 0) {
-  for (let by = Math.floor((cy - r * 1.3) / 2); by <= (cy + r * 1.3) / 2; by++) {
-    for (let bx = Math.floor((cx - r * 1.3) / 2); bx <= (cx + r * 1.3) / 2; bx++) {
-      const x = bx * 2 + 1;
-      const y = by * 2 + 1;
-      const dx = x - cx;
-      const dy = y - cy;
-      const d = Math.hypot(dx, dy);
-      const edge = r * (0.78 + 0.3 * noise(x, y, 5, seed) + 0.2 * (hash(bx, by, seed + 1) - 0.5));
-      if (d > edge) continue;
-      // Small leaf clusters on a staggered 6px grid, each lit on its upper side.
-      const row = Math.floor((y + seed) / 6);
-      const lx = ((((x + (row % 2) * 3 + seed) % 6) + 6) % 6) / 6 - 0.5;
-      const ly = ((((y + seed) % 6) + 6) % 6) / 6 - 0.5;
-      const cluster = -(lx * 0.3 + ly * 0.7) * 0.55;
-      const v = ((-dx * 0.6 - dy * 0.8) / r) * 0.5 + cluster + (hash(bx, by, seed) - 0.5) * 0.22 + shade;
-      let key: PaletteKey = v > 0.38 ? 'leafLight' : v > 0.02 ? 'leaf' : v > -0.32 ? 'leafMid' : 'leafDark';
-      if (d / edge > 0.8 && dy > r * 0.25) key = shade < 0 ? 'leafDeep' : 'leafDark';
-      p.rect(bx * 2, by * 2, 2, 2, key);
-    }
-  }
-}
-
-function conifer(p: Painter, cx: number, baseY: number, height: number, halfW: number) {
+function conifer(p: P, cx: number, baseY: number, height: number, halfW: number) {
   for (let r = 0; r <= height; r++) {
     const y = baseY - height + r;
     const hw = Math.max(0.6, halfW * (r / height) * (0.7 + 0.3 * ((r % 6) / 6)));
@@ -166,29 +120,6 @@ function conifer(p: Painter, cx: number, baseY: number, height: number, halfW: n
   }
 }
 
-function branch(p: Painter, pts: [number, number][], from: number, to: number) {
-  let total = 0;
-  for (let i = 1; i < pts.length; i++) total += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
-  let run = 0;
-  for (let i = 1; i < pts.length; i++) {
-    const [x0, y0] = pts[i - 1];
-    const [x1, y1] = pts[i];
-    const len = Math.hypot(x1 - x0, y1 - y0);
-    for (let s = 0; s <= len; s += 0.5) {
-      const r = (from + (to - from) * ((run + s) / total)) / 2;
-      const cx = x0 + ((x1 - x0) * s) / len;
-      const cy = y0 + ((y1 - y0) * s) / len;
-      for (let y = Math.floor(cy - r); y <= cy + r; y++) {
-        for (let x = Math.floor(cx - r); x <= cx + r; x++) {
-          if (Math.hypot(x + 0.5 - cx, y + 0.5 - cy) > r) continue;
-          p.set(x, y, y + 0.5 < cy ? 'trunk' : 'trunkDark');
-        }
-      }
-    }
-    run += len;
-  }
-}
-
 const LIT_SHARE: Record<TimeOfDay, number> = { day: 0.12, sunset: 0.3, night: 0.65 };
 
 function lit(seed: number, time: TimeOfDay) {
@@ -196,7 +127,7 @@ function lit(seed: number, time: TimeOfDay) {
 }
 
 /** A small window: warm when lit, dusky glass when not. */
-function pane(p: Painter, x: number, y: number, w: number, h: number, on: boolean) {
+function pane(p: P, x: number, y: number, w: number, h: number, on: boolean) {
   for (let j = 0; j < h; j++) {
     for (let i = 0; i < w; i++) {
       const key = on ? (j >= h / 2 ? 'winLit2' : 'winLit') : j >= h / 2 ? 'winDark2' : 'winDark';
@@ -205,7 +136,7 @@ function pane(p: Painter, x: number, y: number, w: number, h: number, on: boolea
   }
 }
 
-function farBuilding(p: Painter, x0: number, x1: number, roofTop: number, wallTop: number, time: TimeOfDay) {
+function farBuilding(p: P, x0: number, x1: number, roofTop: number, wallTop: number, time: TimeOfDay) {
   for (let y = roofTop; y < wallTop; y++) {
     const inset = wallTop - y - 1;
     for (let x = x0 + inset; x <= x1 - inset; x++) p.set(x, y, y === roofTop ? 'redRoof' : (y - roofTop) % 2 ? 'redRoofDark' : 'redRoof');
@@ -217,8 +148,8 @@ function farBuilding(p: Painter, x0: number, x1: number, roofTop: number, wallTo
 }
 
 /** Sky, sun or moon, stars, the distant tree line and far buildings; overcast when raining. */
-export function drawFar(pal: Palette, time: TimeOfDay, overcast = false) {
-  const p = new Painter(W, H, pal);
+export function drawFar(pal: Palette<GladeKey>, time: TimeOfDay, overcast = false) {
+  const p = new Painter<GladeKey>(W, H, pal);
   const sky = overcast ? overcastColor : skyColor;
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) p.setRGB(x, y, sky(time, pal, x, y));
 
@@ -262,12 +193,12 @@ const LEFT_COLUMNS = [148, 151, 163, 174, 186, 197, 209, 212];
 /** Left pixel of each 2px engaged column: paired at the corners and the central bay. */
 const COLUMNS = [...LEFT_COLUMNS, ...LEFT_COLUMNS.map((x) => mirror(x + 1))].sort((a, b) => a - b);
 
-function doe(p: Painter, time: TimeOfDay) {
+function doe(p: P, time: TimeOfDay) {
   // Red tile roof.
   for (let y = 70; y < 80; y++) {
     const inset = 79 - y;
     for (let x = DOE_L + inset; x <= DOE_R + 1 - inset; x++) {
-      let key: PaletteKey = y === 70 ? 'roofLight' : (y - 70) % 3 === 0 ? 'roofDark' : 'roof';
+      let key: GladeKey = y === 70 ? 'roofLight' : (y - 70) % 3 === 0 ? 'roofDark' : 'roof';
       if (key === 'roof' && (x + (y % 2) * 2) % 4 === 0) key = 'roofDark';
       p.set(x, y, key);
     }
@@ -325,7 +256,7 @@ function doe(p: Painter, time: TimeOfDay) {
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {
         if (y === y0 && (x === x0 || x === x1)) continue;
-        let key: PaletteKey = on ? (y > (y0 + y1) / 2 ? 'winLit2' : 'winLit') : y > (y0 + y1) / 2 ? 'winDark2' : 'winDark';
+        let key: GladeKey = on ? (y > (y0 + y1) / 2 ? 'winLit2' : 'winLit') : y > (y0 + y1) / 2 ? 'winDark2' : 'winDark';
         if (y === y0 + Math.round((y1 - y0) * 0.62)) key = 'winFrame';
         p.set(x, y, key);
       }
@@ -367,7 +298,7 @@ function doe(p: Painter, time: TimeOfDay) {
   }
 }
 
-function leftWing(p: Painter, time: TimeOfDay) {
+function leftWing(p: P, time: TimeOfDay) {
   const x0 = 84;
   const x1 = DOE_L - 1;
   for (let y = 92; y < 98; y++) {
@@ -392,7 +323,7 @@ const LAMPS = [205, 242];
 const LAMP_GLOW_R = 15;
 
 /** Warm light around each lamp head: solid rings on the 2px block grid. */
-function lamps(p: Painter, time: TimeOfDay) {
+function lamps(p: P, time: TimeOfDay) {
   const glow = rgb(p.pal.lampGlow);
   for (const x of LAMPS) {
     if (time === 'night') {
@@ -411,7 +342,7 @@ function lamps(p: Painter, time: TimeOfDay) {
   }
 }
 
-function hedges(p: Painter) {
+function hedges(p: P) {
   // Paved terrace along Doe's base, showing where the lawn falls away.
   for (let x = 0; x < W; x++) {
     for (let y = 130; y <= lawnTop(x); y++) {
@@ -433,7 +364,7 @@ function hedges(p: Painter) {
   conifer(p, 236, 136, 18, 3.5);
 }
 
-function trees(p: Painter) {
+function trees(p: P) {
   conifer(p, 70, 136, 40, 6);
   conifer(p, 79, 136, 52, 7);
   conifer(p, 88, 136, 32, 5);
@@ -450,11 +381,11 @@ function trees(p: Painter) {
   right.forEach(([x, y, r], i) => blob(p, x, y, r, 90 + i));
 }
 
-function lawn(p: Painter) {
+function lawn(p: P) {
   for (let x = 0; x < W; x++) {
     const top = lawnTop(x);
     for (let y = top; y < H; y++) {
-      let key: PaletteKey = y - top < 2 ? 'lawnLight' : 'lawn';
+      let key: GladeKey = y - top < 2 ? 'lawnLight' : 'lawn';
       if (y > 158 || (y === 158 && x % 2 === 0) || (y === 157 && x % 4 === 0)) key = 'lawnMid';
       p.set(x, y, key);
     }
@@ -486,7 +417,7 @@ function lawn(p: Painter) {
   }
 }
 
-function path(p: Painter) {
+function path(p: P) {
   for (let i = 0; i < 3; i++) {
     const y = 132 + i;
     p.rect(216 - i * 2, y, 16 + i * 4, 1, i === 0 ? 'pathLight' : 'path');
@@ -496,7 +427,7 @@ function path(p: Painter) {
     const cx = 224 + 92 * t ** 1.7;
     const hw = 5 + 15 * t;
     for (let x = Math.floor(cx - hw); x <= Math.ceil(cx + hw); x++) {
-      let key: PaletteKey = 'path';
+      let key: GladeKey = 'path';
       if (x <= cx - hw + 1) key = 'pathLight';
       else if (x >= cx + hw - 1) key = 'pathDark';
       else if (hash(x >> 1, y >> 1, 8) < 0.08) key = 'pathDark';
@@ -506,8 +437,8 @@ function path(p: Painter) {
 }
 
 /** Buildings, hedges, lamps, trees, lawn, path and people: in front of the Campanile. */
-export function drawMid(pal: Palette, time: TimeOfDay) {
-  const p = new Painter(W, H, pal);
+export function drawMid(pal: Palette<GladeKey>, time: TimeOfDay) {
+  const p = new Painter<GladeKey>(W, H, pal);
   leftWing(p, time);
   doe(p, time);
   lamps(p, time);
@@ -522,8 +453,8 @@ export function drawMid(pal: Palette, time: TimeOfDay) {
 }
 
 /** Overhanging canopies that frame the top corners. */
-export function drawFg(pal: Palette) {
-  const p = new Painter(W, H, pal);
+export function drawFg(pal: Palette<GladeKey>) {
+  const p = new Painter<GladeKey>(W, H, pal);
   const clumps = (list: Clump[], seed: number, shade = 0) =>
     list.forEach(([x, y, r], i) => blob(p, x, y, r, seed + i, shade));
 

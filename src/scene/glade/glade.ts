@@ -1,7 +1,10 @@
-import { ELEMENTS, type ElementId } from '../elements';
-import { PALETTES, type Palette, type TimeOfDay } from './palette';
-import { hex, mulberry32 } from './pixels';
-import { H, PERCH, STARS, W, drawFar, drawFg, drawMid, lawnTop, skyColor } from './backdrop';
+import type { ElementId } from '../../elements';
+import type { Palette, TimeOfDay } from '../palette';
+import { hex, mulberry32 } from '../pixels';
+import { drawDrifters, drawSprite, flipX, opaque, type Sprite } from '../sprites';
+import { H, Stage, W, alphaMask, type Part, type Placed } from '../stage';
+import { PERCH, STARS, drawFar, drawFg, drawMid, lawnTop, skyColor } from './backdrop';
+import { PALETTES, type GladeKey } from './palette';
 import { SPIKEBALL } from './people';
 import {
   BIRD_IDLE,
@@ -16,10 +19,6 @@ import {
   SQUIRREL,
   SUNSET_WISPS,
   WISPS,
-  drawSprite,
-  flipX,
-  opaque,
-  type Sprite,
 } from './sprites';
 
 const BIRD_FRAMES = {
@@ -39,24 +38,11 @@ const TREE_RIGHT = 100;
 
 /** Elements that sit behind Doe, the hedges or the canopies and are hidden where those overlap. */
 const OCCLUDED = new Set<ElementId>(['rain', 'bell']);
-/** Large targets need no extra margin around their silhouette. */
-const UNPADDED = new Set<ElementId>(['rain', 'bell', 'wind']);
 
 /** One rally of the spikeball: hand to net, net to the next player's hands. */
 const RALLY = [0, 1, 3, 2, 0, 3, 1];
 const HIT_S = 0.45;
 const RALLY_PAUSE_S = 4;
-
-interface Part {
-  sprite: Sprite;
-  x: number;
-  y: number;
-}
-
-interface Placed {
-  id: ElementId;
-  parts: Part[];
-}
 
 interface Leaf {
   x: number;
@@ -100,34 +86,17 @@ interface Layers {
   fg: HTMLCanvasElement;
 }
 
-function alphaMask(c: HTMLCanvasElement) {
-  const data = c.getContext('2d')!.getImageData(0, 0, W, H).data;
-  const m = new Uint8Array(W * H);
-  for (let i = 0; i < W * H; i++) m[i] = data[i * 4 + 3] > 0 ? 1 : 0;
-  return m;
-}
-
-/**
- * Owns everything drawn on the 320x180 scene canvas, plus the silhouette masks
- * used for outlines and hit-testing. Lives outside React render state.
- */
-export class World {
-  present = Object.fromEntries(ELEMENTS.map((e) => [e.id, false])) as Record<ElementId, boolean>;
-  time: TimeOfDay = 'day';
-  reducedMotion = false;
-  highlight: ElementId | null = null;
-
+/** The Glade facing Doe Library, with the Campanile behind it on the left. */
+export class Glade extends Stage<GladeKey> {
   private layers = new Map<string, Layers>();
   private midMask: Uint8Array;
   private fgMask: Uint8Array;
-  private callUntil: Partial<Record<ElementId, number>> = {};
   private nextBlink = 0;
   private birdFacing = 0;
   private birdHopUntil = 0;
   private nextBirdMove = 0;
   private leaves: Leaf[] = [];
   private nextLeaf = 0;
-  private rng = mulberry32(Date.now() & 0xffff);
   /** Each drop belongs to a cloud and falls from its base. */
   private drops = RAIN_CLOUDS.flatMap((c, cloud) => {
     const r = mulberry32(50 + cloud);
@@ -140,7 +109,6 @@ export class World {
       land: r(),
     }));
   });
-  private placedCache: Placed[] = [];
   /** Deer wander the Glade at night, each within its own stretch of lawn. */
   private deer: Deer[] = [
     { x: 40, y: 147, min: 12, max: 150, dir: 1, walking: false, since: 0, until: 0, grazeAfter: Infinity, phase: 0 },
@@ -149,20 +117,22 @@ export class World {
   ];
   private lastDeer = 0;
 
-  private tree: Sprite;
+  private tree: Sprite<GladeKey>;
 
-  constructor() {
+  constructor(elements: ElementId[]) {
+    super(elements);
+    this.unpadded = new Set(['rain', 'bell', 'wind']);
     const l = this.getLayers('day');
     this.midMask = alphaMask(l.mid);
     this.fgMask = alphaMask(l.fg);
-    const px: Sprite['px'] = new Array(TREE_RIGHT * H).fill(null);
+    const px: Sprite<GladeKey>['px'] = new Array(TREE_RIGHT * H).fill(null);
     for (let y = 0; y < H; y++) {
       for (let x = 0; x < TREE_RIGHT; x++) if (this.fgMask[y * W + x]) px[y * TREE_RIGHT + x] = 'leaf';
     }
     this.tree = { w: TREE_RIGHT, h: H, px };
   }
 
-  get palette(): Palette {
+  protected get palette(): Palette<GladeKey> {
     return PALETTES[this.time];
   }
 
@@ -180,26 +150,7 @@ export class World {
     return l;
   }
 
-  /** An element is calling for the next `ms`: the bird sings, the owl hoots, and so on. */
-  call(id: ElementId, ms: number) {
-    this.callUntil[id] = Math.max(this.callUntil[id] ?? 0, performance.now() + ms);
-  }
-
-  private calling(id: ElementId, now: number) {
-    return now < (this.callUntil[id] ?? 0);
-  }
-
-  /** Resting bounds of an element, used to place keyboard focus targets. */
-  bounds(id: ElementId) {
-    const parts = this.restingParts(id);
-    const x0 = Math.max(0, Math.min(...parts.map((p) => p.x)));
-    const y0 = Math.max(0, Math.min(...parts.map((p) => p.y)));
-    const x1 = Math.min(W, Math.max(...parts.map((p) => p.x + p.sprite.w)));
-    const y1 = Math.min(H, Math.max(...parts.map((p) => p.y + p.sprite.h)));
-    return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
-  }
-
-  private restingParts(id: ElementId): Part[] {
+  protected restingParts(id: ElementId): Part<GladeKey>[] {
     switch (id) {
       case 'bell':
         return [{ sprite: CAMPANILE, ...BELL_POS }];
@@ -217,6 +168,8 @@ export class World {
         return [{ sprite: CRICKET[0], ...CRICKET_POS }];
       case 'wind':
         return [{ sprite: this.tree, x: 0, y: 0 }];
+      default:
+        return [];
     }
   }
 
@@ -225,12 +178,12 @@ export class World {
     return this.present.wind ? Math.round(Math.sin(t * 0.9) * 0.8) : 0;
   }
 
-  private place(now: number): Placed[] {
+  private place(now: number): Placed<GladeKey>[] {
     const t = this.reducedMotion ? 0 : now / 1000;
     const still = this.reducedMotion;
     const blip = (ms: number) => !still && Math.floor(now / ms) % 2 === 0;
-    const out: Placed[] = [];
-    const at = (id: ElementId, sprite: Sprite, pos: { x: number; y: number }, dx = 0, dy = 0) =>
+    const out: Placed<GladeKey>[] = [];
+    const at = (id: ElementId, sprite: Sprite<GladeKey>, pos: { x: number; y: number }, dx = 0, dy = 0) =>
       out.push({ id, parts: [{ sprite, x: pos.x + dx, y: pos.y + dy }] });
 
     for (const id of Object.keys(this.present) as ElementId[]) {
@@ -279,32 +232,12 @@ export class World {
     return out;
   }
 
-  private occluded(id: ElementId, x: number, y: number) {
-    if (x < 0 || y < 0 || x >= W || y >= H) return true;
+  protected occluded(id: ElementId, x: number, y: number) {
+    if (super.occluded(id, x, y)) return true;
     const i = y * W + x;
     if (!OCCLUDED.has(id)) return false;
     if (this.midMask[i] === 1 || this.fgMask[i] === 1) return true;
-    return id === 'rain' && this.present.bell && opaque(CAMPANILE, x - BELL_POS.x, y - BELL_POS.y);
-  }
-
-  private mask(p: Placed, x: number, y: number): boolean {
-    if (!p.parts.some((s) => opaque(s.sprite, x - s.x, y - s.y))) return false;
-    return !this.occluded(p.id, x, y);
-  }
-
-  hitTest(lx: number, ly: number): ElementId | null {
-    const x = Math.floor(lx);
-    const y = Math.floor(ly);
-    for (let i = this.placedCache.length - 1; i >= 0; i--) {
-      const p = this.placedCache[i];
-      const pad = UNPADDED.has(p.id) ? 0 : 2;
-      for (let dy = -pad; dy <= pad; dy++) {
-        for (let dx = -pad; dx <= pad; dx++) {
-          if (this.mask(p, x + dx, y + dy)) return p.id;
-        }
-      }
-    }
-    return null;
+    return id === 'rain' && !!this.present.bell && opaque(CAMPANILE, x - BELL_POS.x, y - BELL_POS.y);
   }
 
   private updateAmbient(now: number) {
@@ -361,11 +294,7 @@ export class World {
 
     const sunset = this.time === 'sunset';
     const wisps = sunset ? [...WISPS, ...SUNSET_WISPS] : night ? WISPS : [];
-    for (const w of wisps) {
-      const span = W + w.sprite.w + 40;
-      const x = Math.floor(((w.x0 + t * w.speed * (sunset ? SUNSET_DRIFT : 1)) % span) - w.sprite.w);
-      drawSprite(ctx, w.sprite, x, w.y, pal);
-    }
+    drawDrifters(ctx, wisps, t, pal, W, sunset ? SUNSET_DRIFT : 1);
 
     const rain = get('rain');
     if (rain) for (const s of rain.parts) drawSprite(ctx, s.sprite, s.x, s.y, pal);
@@ -400,12 +329,11 @@ export class World {
       if (p) for (const s of p.parts) drawSprite(ctx, s.sprite, s.x, s.y, pal);
     }
 
-    const hl = placed.find((p) => p.id === this.highlight);
-    if (hl) this.drawOutline(ctx, hl, pal);
+    this.drawHighlight(ctx);
   }
 
   /** The spikeball bouncing hand to net to hand, with a rest between rallies. */
-  private drawBall(ctx: CanvasRenderingContext2D, pal: Palette, t: number) {
+  private drawBall(ctx: CanvasRenderingContext2D, pal: Palette<GladeKey>, t: number) {
     const { net, hands } = SPIKEBALL;
     const rally = (RALLY.length - 1) * 2 * HIT_S;
     const phase = t % (rally + RALLY_PAUSE_S);
@@ -427,7 +355,7 @@ export class World {
   }
 
   /** Deer amble a few steps, then stand a while; some pauses end in grazing. */
-  private drawDeer(ctx: CanvasRenderingContext2D, pal: Palette, now: number) {
+  private drawDeer(ctx: CanvasRenderingContext2D, pal: Palette<GladeKey>, now: number) {
     const dt = this.lastDeer ? Math.min(0.1, (now - this.lastDeer) / 1000) : 0;
     this.lastDeer = now;
     for (const d of this.deer) {
@@ -461,7 +389,7 @@ export class World {
     }
   }
 
-  private drawDrops(ctx: CanvasRenderingContext2D, pal: Palette, t: number, clouds: Part[]) {
+  private drawDrops(ctx: CanvasRenderingContext2D, pal: Palette<GladeKey>, t: number, clouds: Part<GladeKey>[]) {
     ctx.fillStyle = pal.rain;
     ctx.globalAlpha = 0.6;
     for (const d of this.drops) {
@@ -480,45 +408,5 @@ export class World {
       }
     }
     ctx.globalAlpha = 1;
-  }
-
-  /** A crisp ice-blue edge with a soft blue glow ring just outside it. */
-  private drawOutline(ctx: CanvasRenderingContext2D, p: Placed, pal: Palette) {
-    const x0 = Math.min(...p.parts.map((s) => s.x)) - 3;
-    const y0 = Math.min(...p.parts.map((s) => s.y)) - 3;
-    const x1 = Math.max(...p.parts.map((s) => s.x + s.sprite.w)) + 3;
-    const y1 = Math.max(...p.parts.map((s) => s.y + s.sprite.h)) + 3;
-    const bw = x1 - x0;
-    const bh = y1 - y0;
-    const inside = new Uint8Array(bw * bh);
-    for (let y = 0; y < bh; y++) {
-      for (let x = 0; x < bw; x++) inside[y * bw + x] = this.mask(p, x + x0, y + y0) ? 1 : 0;
-    }
-    const at = (x: number, y: number) => (x < 0 || y < 0 || x >= bw || y >= bh ? 0 : inside[y * bw + x]);
-    const ring = new Uint8Array(bw * bh);
-    for (let y = 0; y < bh; y++) {
-      for (let x = 0; x < bw; x++) {
-        if (at(x, y)) continue;
-        if (at(x - 1, y) || at(x + 1, y) || at(x, y - 1) || at(x, y + 1)) ring[y * bw + x] = 1;
-        else if (at(x - 1, y - 1) || at(x + 1, y - 1) || at(x - 1, y + 1) || at(x + 1, y + 1)) {
-          ring[y * bw + x] = 2;
-        }
-      }
-    }
-    ctx.fillStyle = pal.outlineGlow;
-    for (let y = 0; y < bh; y++) {
-      for (let x = 0; x < bw; x++) {
-        if (at(x, y) || ring[y * bw + x] === 1) continue;
-        const r = (xx: number, yy: number) =>
-          xx >= 0 && yy >= 0 && xx < bw && yy < bh && ring[yy * bw + xx] === 1;
-        if (ring[y * bw + x] === 2 || r(x - 1, y) || r(x + 1, y) || r(x, y - 1) || r(x, y + 1)) {
-          ctx.fillRect(x + x0, y + y0, 1, 1);
-        }
-      }
-    }
-    ctx.fillStyle = pal.outline;
-    for (let y = 0; y < bh; y++) {
-      for (let x = 0; x < bw; x++) if (ring[y * bw + x] === 1) ctx.fillRect(x + x0, y + y0, 1, 1);
-    }
   }
 }

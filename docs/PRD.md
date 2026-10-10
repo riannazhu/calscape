@@ -12,12 +12,12 @@ Music is too distracting to study with. I want CalScape to play on the TV as a c
 
 ## 3. Scope
 
-The Glade scene is complete: everything in the first column is built. The second column lists what is not yet built. Screenshots of each time of day, rain and the controls are in `docs/screenshots/` and shown in the README.
+Everything in the first column is built; the second column lists what is not yet built. Screenshots of each scene and time of day, rain and the controls are in `docs/screenshots/` and shown in the README.
 
 | Built | Not yet built |
 | --- | --- |
-| One Glade scene facing Doe, with Campanile behind it on the left | Additional scenes and scene switching |
-| Four elements per time of day (rain and the Campanile bell in all three) | Storm, creek, chatter, and more elements |
+| Three scenes: the Glade facing Doe, the Caffè Strada patio and the Berkeley Marina shore, switched from the top-right label | More scenes |
+| Four elements per scene and time of day | Storm, creek, and more elements |
 | Add/remove, mute, and individual volume controls | Free dragging, multiple copies, and advanced placement |
 | Day/sunset/night visual switch; master volume; fullscreen | Automatic time transitions and Spotify integration |
 | Confirmation for periodic sounds; subtle animation; idle control hiding | Accounts and saved presets |
@@ -40,6 +40,16 @@ Foreground trees frame the top corners. The left tree has a thick trunk rising d
 
 Face Doe from the Glade at lawn level. Doe must read as a long pale facade with tall repeated windows and a low roofline. Place the Campanile behind and to the left of Doe. Keep both landmarks recognizable when simplifying them.
 
+### Caffè Strada
+
+The patio of the real café at College Avenue and Bancroft Way, seen from inside the front railing: the café's stucco corner with its warm arched window on the left, flowering plum trees overhead, string lights from the café to the big plum, wooden tables with students, patio heaters, and Bancroft Way behind the back railing with campus halls and trees beyond. Two street lamps carry blue-and-gold Cal banners. After dark the lamps, string lights and heaters glow in stepped rings, and the windows across Bancroft light up. Rain brings the same overcast deck as the Glade, in this scene's colours.
+
+Now and then an AC Transit bus pulls in to the stop on Bancroft, waits and pulls away, and cyclists ride past in either direction. These are scenery only and make no sound.
+
+### Berkeley Marina
+
+The grassy shore beside the Berkeley Marina pier, looking west across the bay. Nature leads and the boardwalk stays secondary: open grass with wildflowers, a curving path, reeds, riprap rocks along the water and a Monterey cypress framing the top left. The pier runs out on the left with a few people fishing; their rods twitch now and then and their lines hang down to the water. San Francisco's skyline, Alcatraz and the Golden Gate Bridge are visible in the distance. At sunset the sun sets between the bridge towers; at night the bridge and city lights glow and the moon lays a path on the water. Small sailboats drift across the bay except at night.
+
 ## 5. Interface requirements
 
 | Region | Required behavior |
@@ -48,7 +58,7 @@ Face Doe from the Glade at lawn level. Doe must read as a long pale facade with 
 | Bottom center | Pixel inventory with one tile per element sprite, and no separate add tile. Each time of day offers its own four elements (see below). Select an absent element to add it at a predefined scene position. Mark present elements without duplicating them. |
 | Bottom right | Master volume control as pixel volume blocks, with an adjacent fullscreen tile. Retain smooth gain internally. |
 | Scene objects | Hover gives the physical sprite a clear outline and shows its anchored volume adjustment bar. Bars are nudged to stay fully inside the visible scene. |
-| Top corners | Small CalScape label with a pixel bear, and the scene name with a pixel tree. Both icons are about the height of the text, so the two labels are the same height. A clock can be added later if useful. |
+| Top corners | Small CalScape label with a pixel bear on the left. On the right, the scene's name followed by three scene icons (a pine for the Glade, a coffee cup for Caffè Strada, a sailboat for the Marina); the current scene's icon is in full colour and the others are dimmed. Clicking an icon switches scenes. The icons are about the height of the text, so the two labels are the same height. A clock can be added later if useful. |
 
 All corner menus attach to the visible scene rectangle, not the browser window, so they stay on the scene when the window is taller or wider than it.
 
@@ -74,18 +84,30 @@ All corner menus attach to the visible scene rectangle, not the browser window, 
 
 - Enable audio through an explicit user interaction. Continuous sounds start normally when added and need no separate preview. For periodic sounds, play one brief confirmation on add: adding the Campanile between hours plays one bell chime, then waits for the next hourly event. Respect mute and master-volume settings.
 - Every sound is ambient background, in level and in pattern. Defaults are low and balanced so no single element pulls focus: beds (rain, breeze, crickets) are soft and even, and animals call rarely and quietly.
-- Each time of day offers four elements, suited to that time:
+- Each scene offers four elements per time of day, suited to that time. One element changes between day, sunset and night; it is always the third slot:
 
-  | Day | Sunset | Night |
-  | --- | --- | --- |
-  | Rain, Campanile bell, songbird, squirrel | Rain, Campanile bell, mourning dove, breeze | Rain, Campanile bell, owl, crickets |
+  | Scene | Day | Sunset | Night |
+  | --- | --- | --- | --- |
+  | Glade | Rain, Campanile bell, songbird, squirrel | Rain, Campanile bell, mourning dove, breeze | Rain, Campanile bell, owl, crickets |
+  | Caffè Strada | Rain, café chatter, house sparrow, laptop typing | Rain, café chatter, crow, laptop typing | Rain, café chatter, crickets, laptop typing |
+  | Berkeley Marina | Waves, foghorn, western gull, sea lions | Waves, foghorn, Canada geese, sea lions | Waves, foghorn, night heron, sea lions |
 
-  The third slot is always that time's bird.
+- Each scene keeps its own elements, mute and volume. Switching scenes fades out the old scene's sounds and starts the new scene's; an element both scenes share (rain, crickets) keeps playing without restarting if it is present in both.
 
   Adding an animal (songbird, squirrel, dove or owl) plays its call straight away as confirmation, then it calls every so often.
 
   An element added at one time of day keeps its place, mute and volume when the time changes. If the new time doesn't offer it, its sound fades out and its sprite hides; both come back when you switch back.
 - Rain loops beneath the cloud; the songbird chirps intermittently from its branch.
+- Café chatter (Strada): a steady loop of a real café, with the clink of cups and spoons in it, from the three friends at the centre table, who talk, sip and nod.
+- Laptop typing (Strada): soft, even keyboard typing from the student working at the front-left table.
+- House sparrow (Strada, day): hops between spots on the front railing and chirps every so often.
+- Crow (Strada, sunset): perches on the bannered street lamp and caws now and then, standing in for Berkeley's evening crow flights.
+- Crickets (Strada, night): a cricket in the patio planter, the same periodic chorus as the Glade.
+- Waves (Marina): a steady loop of water lapping on rocks; its sprite is the foam riding up and slipping back along the shore.
+- Foghorn (Marina): a distant diaphone from the bay's own East Brother lighthouse every 25 to 50 seconds; its sprite is a fog bank resting over the Marin Headlands.
+- Western gull (Marina, day), Canada geese (sunset) and black-crowned night heron (night): the gull and heron stand on a piling by the shore and the geese graze on the grass, each calling every so often.
+- Sea lions (Marina): sea lions hauled out on a float bark now and then, the one propped up lifting its head.
+- The Strada and Marina sounds are all real recordings, credited in the README. They have no synthesised stand-in and stay silent if a file fails to load. Looped recordings carry a short copy of their own end before the start and of their start after the end, and loop between those points, so encoder padding never lands on the loop point.
 - Squirrel (day): a fox squirrel on the songbird's branch flicks its tail and chitters now and then, with a rustle of leaves.
 - Mourning dove (sunset): a dove the songbird's size, on the same branch, lowers its head and puffs its breast as it gives a soft "oo-WOO-oo... oo... oo" every so often. The call is a real recording, `src/audio/sounds/dove.mp3`: one perch-coo from xeno-canto XC128006 (CC BY-SA 3.0, credited in the README). The background noise is removed entirely: only the coo's own pitch and harmonics are kept, so the gaps between notes are silent. A synthesised coo plays if it fails to load.
 - Breeze (sunset): low, even wind with only gentle swells. There is no sprite in the sky; the breeze is the trees themselves. Its target and outline are the left tree, and its tile is a tree with wind lines. While present, the canopies and the perched bird rock by a pixel, and leaves fall more often and drift sideways. 
@@ -124,5 +146,6 @@ The scene is a 320 × 180 logical canvas with 16 × 16 tiles, scaled with neares
 - Hover a sprite and move onto its bar: outline is clear and controls remain usable. Clicking empty space closes them.
 - Change master volume: relative element levels stay proportional. Switch the time of day: elements offered at both times keep playing without restarting.
 - Switch away from a time that offers an element and back: its sound fades out and returns, with no duplicate loops.
+- Switch scenes: the old scene's sounds fade out and its controls close; switching back finds its elements, mute and volume as they were. Rain present in both scenes keeps playing without restarting.
 - Remove and re-add repeatedly: no duplicate loops or leaked timers. Removing the Campanile removes its tower sprite and stops its sound and timers. Adding it plays one confirmation chime; enabled bells then fire once per hour.
 - Use fullscreen and study for an hour: motion stays calm, loops have no obvious seams, and controls work with keyboard and touch.
