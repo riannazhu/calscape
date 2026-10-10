@@ -46,7 +46,7 @@ Face Doe from the Glade at lawn level. Doe must read as a long pale facade with 
 | Bottom center | Pixel inventory with one tile per element sprite, and no separate add tile. Select an absent element to add it at a predefined scene position. Mark present elements without duplicating them. |
 | Bottom right | Master volume control and adjacent fullscreen tile, matching the nighttime Glade, café, and marina suite. Prefer the shown pixel volume blocks; retain smooth gain internally. |
 | Scene objects | Hover gives the physical sprite a clear outline and shows its anchored volume adjustment bar. |
-| Top corners | Small CalScape label with a pixel bear, and the scene name with a pixel tree. A clock can be added later if useful. |
+| Top corners | Small CalScape label with a pixel bear, and the scene name with a pixel tree. Both icons are about the height of the text, so the two labels are the same height. A clock can be added later if useful. |
 
 All corner menus attach to the visible scene rectangle, not the browser window, so they stay on the scene when the window is taller or wider than it.
 

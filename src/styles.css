@@ -125,7 +125,7 @@ body {
   letter-spacing: calc(var(--u) * 0.25);
   color: var(--ink);
   pointer-events: none;
-  gap: calc(var(--u) * 3);
+  gap: calc(var(--u) * 2);
 }
 
 .brand {

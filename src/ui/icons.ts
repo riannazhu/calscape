@@ -17,14 +17,12 @@ export const SUN = [
 /** Cal bear head for the CalScape label. */
 export const BEAR = fromRows(
   [
-    '.BB....BB.',
-    'BLBBBBBBLB',
-    '.BBBBBBBB.',
-    '.BDBBBBDB.',
-    '.BBBLLBBB.',
-    '.BBLDDLBB.',
-    '..BLLLLB..',
-    '...BBBB...',
+    'BB...BB',
+    'BBBBBBB',
+    'BDBBBDB',
+    'BBLLLBB',
+    'BLLDLLB',
+    '.BBBBB.',
   ],
   { B: 'deer', L: 'deerLight', D: 'eye' },
 );
@@ -32,17 +30,12 @@ export const BEAR = fromRows(
 /** Little pine for the scene label. */
 export const PINE = fromRows(
   [
-    '....P....',
-    '...PPp...',
-    '..LPPpp..',
-    '...PPp...',
-    '..LPPPp..',
-    '.LLPPPpp.',
-    '..LPPPp..',
-    '.LPPPPPp.',
-    'LLPPPPPpp',
-    '....T....',
-    '....T....',
+    '..P..',
+    '.LPp.',
+    '.LPp.',
+    'LPPPp',
+    'LLPpp',
+    '..T..',
   ],
   { L: 'pineLight', P: 'pine', p: 'pineDark', T: 'trunk' },
 );
