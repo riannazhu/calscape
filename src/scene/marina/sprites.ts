@@ -20,6 +20,12 @@ export const GULL = {
   ),
 };
 
+/** Gulls wheeling over the water: wings up, then level in a glide. */
+export const GULL_FLYING = [
+  fromRows(['G.....G', '.G...G.', '..GWG..', '...W...'], { G: 'gullGrey', W: 'gull' } as Legend),
+  fromRows(['.......', 'DGGWGGD', '...W...', '.......'], { G: 'gullGrey', W: 'gull', D: 'gullDark' } as Legend),
+];
+
 /** A black-crowned night heron hunched on the piling: dark cap and back, grey wings, red eye. */
 const HERON_LEGEND: Legend = { D: 'heronDark', G: 'heron', L: 'heronLight', E: 'heronEye', Y: 'bill' };
 
@@ -109,8 +115,22 @@ function fogBank(w: number, h: number, seed: number): S {
   return sprite;
 }
 
-export const FOG = fogBank(76, 16, 5);
-export const FOG_POS = { x: 248, y: 77 };
+export const FOG = fogBank(70, 12, 5);
+export const FOG_POS = { x: 252, y: 82 };
+
+/** A ferry heading out under the Golden Gate, sounding its horn as it passes the fog bank. */
+const FERRY_ROWS = [
+  '.............RR.........',
+  '.............DD.........',
+  '......WWWWWWWWWWWW......',
+  '....WWwwwwwwwwwwwwWW....',
+  'HHHHHHHHHHHHHHHHHHHHHHH.',
+  '.DDDDDDDDDDDDDDDDDDDDD..',
+];
+const ferry = (windows: MarinaKey) =>
+  fromRows(FERRY_ROWS, { R: 'shirtRed', D: 'pilingDark', W: 'hull', w: windows, H: 'sailShade' } as Legend);
+export const FERRY = { day: ferry('pierDark'), lit: ferry('cityLit') };
+export const FERRY_POS = { x: 262, y: 89 };
 
 /** Water lapping at the shore: frames of foam riding up and slipping back along the rocks. */
 export const FOAM_POS = { x: 0, y: 128 };
@@ -137,10 +157,11 @@ const SAILBOAT = fromRows(
 );
 const SMALL_BOAT = fromRows(['..M..', '.SMs.', 'SSMs.', '..M..', 'HHHHH'], { S: 'sail', s: 'sailShade', M: 'rod', H: 'hull' } as Legend);
 
-export const BOATS: Drifter<MarinaKey>[] = [
-  { sprite: SMALL_BOAT, y: 94, x0: 60, speed: 0.35 },
-  { sprite: SAILBOAT, y: 99, x0: 250, speed: 0.6 },
-  { sprite: SMALL_BOAT, y: 96, x0: 170, speed: 0.45 },
+/** Sailboats riding at anchor or idling: each sways about `x` over `period` seconds and bobs on the swell. */
+export const BOATS: { sprite: S; x: number; y: number; sway: number; period: number }[] = [
+  { sprite: SMALL_BOAT, x: 64, y: 94, sway: 8, period: 70 },
+  { sprite: SAILBOAT, x: 150, y: 100, sway: 12, period: 95 },
+  { sprite: SMALL_BOAT, x: 186, y: 96, sway: 6, period: 60 },
 ];
 
 export const WISPS: Drifter<MarinaKey>[] = [

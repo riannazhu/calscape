@@ -88,12 +88,12 @@ export const SCENES: SceneDef[] = [
     title: 'Caffè Strada patio on Bancroft Way',
     icon: CUP,
     elements: [
-      { id: 'chatter', name: 'Café chatter', bar: { x: 128, y: 117, place: 'above' } },
-      { id: 'typing', name: 'Laptop typing', bar: { x: 20, y: 127, place: 'above' } },
-      { id: 'crickets', name: 'Crickets', bar: { x: 187, y: 160, place: 'above' } },
-      { id: 'rain', name: 'Rain', bar: { x: 204, y: 48, place: 'below' } },
-      { id: 'sparrow', name: 'House sparrow', bar: { x: 228, y: 126, place: 'above' } },
-      { id: 'crow', name: 'Crow', bar: { x: 163, y: 35, place: 'right' } },
+      { id: 'chatter', name: 'Café chatter', bar: { x: 258, y: 92, place: 'above' } },
+      { id: 'typing', name: 'Laptop typing', bar: { x: 154, y: 96, place: 'above' } },
+      { id: 'crickets', name: 'Crickets', bar: { x: 103, y: 135, place: 'above' } },
+      { id: 'rain', name: 'Rain', bar: { x: 150, y: 50, place: 'below' } },
+      { id: 'sparrow', name: 'House sparrow', bar: { x: 262, y: 142, place: 'above' } },
+      { id: 'crow', name: 'Crow', bar: { x: 131, y: 38, place: 'right' } },
     ],
     inventory: {
       day: ['rain', 'chatter', 'sparrow', 'typing'],

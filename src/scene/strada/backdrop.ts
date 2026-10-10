@@ -1,40 +1,28 @@
-import { stamp, type Figure } from '../figures';
 import { blob, branch } from '../foliage';
 import type { Palette, TimeOfDay } from '../palette';
 import { Painter, hash, mulberry32, noise, rgb, type RGB } from '../pixels';
 import { clamp01, glowAt, overcastSky, steppedSky, type Glow, type Sky } from '../sky';
 import { fromRows } from '../sprites';
 import { H, W } from '../stage';
+import { stamp } from '../figures';
 import type { StradaKey } from './palette';
-import {
-  CHATTER_POS,
-  CHATTER_SEAT,
-  CHATTER_TABLE,
-  CUP,
-  HANDS,
-  LOOKS,
-  TYPING_POS,
-  TYPING_SEAT,
-  TYPING_TABLE,
-  friend,
-  friendLongHair,
-  smallPatron,
-} from './sprites';
+import { LOOKS, chair, cup, facing, laptop, seated } from './people';
+import { CHATTER_SEATS, CHATTER_TABLE, TYPISTS } from './sprites';
 
 type P = Painter<StradaKey>;
 type Pal = Palette<StradaKey>;
 
-/** The campus path beyond the railing, where cyclists pass. */
-export const PATH = { top: 96, bottom: 104 };
-/** Where the patio's brick paving begins. */
-const PATIO = 120;
-const SUN = { x: 128, y: 52, r: 5 };
+/** The campus path beyond the patio, where cyclists pass. */
+export const PATH = { top: 101, bottom: 108 };
+/** Where the patio's paving begins. */
+const PATIO = 108;
+const SUN = { x: 112, y: 58, r: 5 };
 
 const SKY_KEYS: StradaKey[] = ['sky0', 'sky1', 'sky2', 'sky3', 'sky4', 'sky5'];
 const SKY_LEVELS: Record<TimeOfDay, number> = { day: 20, sunset: 30, night: 14 };
 
 function skyField(time: TimeOfDay, x: number, y: number) {
-  const v = clamp01(y / 92);
+  const v = clamp01(y / 96);
   if (time !== 'sunset') return v;
   return clamp01(0.35 * v + 0.65 * (1 - Math.hypot(x - SUN.x, (y - SUN.y) * 1.4) / 240));
 }
@@ -66,80 +54,66 @@ const OVERCAST_SKY_SHOW: Record<TimeOfDay, number> = { day: 0.12, sunset: 0.35, 
 
 function overcastColor(time: TimeOfDay, pal: Pal, x: number, y: number): RGB {
   const deck = (['cloudDark', 'cloudShade', 'cloudMid'] as const).map((k) => rgb(pal[k]));
-  return overcastSky(deck, skyColor(time, pal, x, y), OVERCAST_SKY_SHOW[time], 92, x, y);
-}
-
-/**
- * The lower edge of the plum canopy: low over the café and the left tree,
- * lifting over the middle of the patio to leave open sky, sweeping down again
- * on the right.
- */
-function canopyEdge(x: number) {
-  const n = 8 * noise(x, 0, 14, 3);
-  if (x < 96) return 26 + n + 6 * Math.sin(x * 0.09);
-  if (x < 226) return 12 + n;
-  return 16 + (x - 226) * 0.6 + n;
+  return overcastSky(deck, skyColor(time, pal, x, y), OVERCAST_SKY_SHOW[time], 96, x, y);
 }
 
 const starRng = mulberry32(11);
-export const STARS = Array.from({ length: 40 }, () => ({
-  x: 60 + Math.floor(starRng() * (W - 60)),
-  y: 14 + Math.floor(starRng() * 50),
-})).filter((s) => s.y > canopyEdge(s.x) + 6);
+/** Stars anywhere in the sky; the canopy in front hides those behind leaves. */
+export const STARS = Array.from({ length: 50 }, () => ({
+  x: Math.floor(starRng() * W),
+  y: 8 + Math.floor(starRng() * 50),
+}));
 
-const LIT_SHARE: Record<TimeOfDay, number> = { day: 0.1, sunset: 0.3, night: 0.6 };
+const LIT_SHARE: Record<TimeOfDay, number> = { day: 0.1, sunset: 0.35, night: 0.65 };
 const lit = (seed: number, time: TimeOfDay) => hash(seed, 5, 91) < LIT_SHARE[time];
 
-/** Campus beyond the patio: a lush tree line, a tile-roofed hall, a lawn and the path. */
+/** A row of round tree crowns, lit on their upper left. */
+function crowns(p: P, seed: number, x0: number, x1: number, top: number, spread: number, keys: [StradaKey, StradaKey, StradaKey], skip?: (x: number) => boolean) {
+  const rng = mulberry32(seed);
+  for (let cx = x0; cx < x1; ) {
+    const r = 6 + rng() * 6;
+    const cy = top + r + rng() * spread;
+    if (!skip?.(cx)) {
+      for (let y = Math.floor(cy - r); y < PATIO; y++) {
+        for (let x = Math.floor(cx - r); x <= cx + r; x++) {
+          if (y < cy && Math.hypot(x + 0.5 - cx, y + 0.5 - cy) > r) continue;
+          const v = (-(x - cx) * 0.5 - (y - cy) * 0.8) / r + (hash(x >> 1, y >> 1, seed) - 0.5) * 0.5;
+          p.set(x, y, v > 0.45 ? keys[0] : v > -0.1 ? keys[1] : keys[2]);
+        }
+      }
+    }
+    cx += r * 1.25;
+  }
+}
+
+/** Campus beyond the patio: layers of trees, a pink stone hall, the lawn and the path. */
 function campus(p: P, time: TimeOfDay) {
-  const hall = (x0: number, x1: number, roof: number) => {
-    for (let y = roof; y < roof + 4; y++) {
-      const inset = roof + 3 - y;
-      for (let x = x0 + inset; x <= x1 - inset; x++) p.set(x, y, (y - roof) % 2 ? 'hallRoofDark' : 'hallRoof');
-    }
-    for (let y = roof + 4; y < 92; y++) for (let x = x0; x <= x1; x++) p.set(x, y, x >= x1 - 1 ? 'hallShade' : 'hall');
-    for (let wy = roof + 6; wy + 3 < 92; wy += 6) {
-      for (let wx = x0 + 3; wx + 2 < x1 - 1; wx += 5) {
-        const on = lit(wx * 3 + wy, time);
-        p.rect(wx, wy, 2, 3, on ? 'winLit' : 'winDark');
-        if (on) p.set(wx, wy + 2, 'winLit2');
-      }
-    }
-  };
-  hall(238, 292, 72);
-  // Rounded crowns of the trees along the far side of the lawn.
-  const crowns = mulberry32(17);
-  for (let cx = -4; cx < W + 8; ) {
-    const r = 7 + crowns() * 6;
-    const cy = 74 + crowns() * 6 - (cx > 230 && cx < 300 ? -6 : 0);
-    for (let y = Math.floor(cy - r); y < 94; y++) {
-      for (let x = Math.floor(cx - r); x <= cx + r; x++) {
-        const above = y < cy && Math.hypot(x + 0.5 - cx, y + 0.5 - cy) > r;
-        if (above || x < 0 || x >= W) continue;
-        const dx = x - cx;
-        const dy = y - cy;
-        const lightSide = -dx * 0.5 - dy * 0.8 > r * 0.35;
-        p.set(x, y, lightSide && hash(x >> 1, y >> 1, 5) > 0.2 ? 'farTree' : 'farTreeDark');
-      }
-    }
-    cx += r * 1.3;
+  crowns(p, 17, -6, W + 10, 44, 10, ['farTreeLight', 'farTreeLight', 'farTree']);
+  const hall = { x0: 112, x1: 176, roof: 56 };
+  for (let y = hall.roof; y < hall.roof + 4; y++) {
+    const inset = hall.roof + 3 - y;
+    for (let x = hall.x0 + inset; x <= hall.x1 - inset; x++) p.set(x, y, (y - hall.roof) % 2 ? 'hallRoofDark' : 'hallRoof');
   }
-  for (let y = 90; y < PATH.top; y++) {
-    for (let x = 0; x < W; x++) p.set(x, y, y < 92 && hash(x, y, 8) < 0.5 ? 'lawnDark' : y === PATH.top - 1 ? 'lawnDark' : 'lawn');
+  for (let y = hall.roof + 4; y < PATH.top; y++) {
+    for (let x = hall.x0; x <= hall.x1; x++) p.set(x, y, x >= hall.x1 - 1 || (x - hall.x0) % 16 === 0 ? 'hallShade' : 'hall');
   }
-  for (let y = PATH.top; y < PATH.bottom; y++) p.rect(0, y, W, 1, y === PATH.top ? 'mortar' : 'path');
-  // Low planting just beyond the patio railing.
-  for (let x = 0; x < W; x++) {
-    const top = PATH.bottom + Math.round(2 * noise(x, 0, 4, 31));
-    for (let y = top; y < PATIO; y++) p.set(x, y, y < top + 2 && hash(x, y, 4) < 0.6 ? 'leafMid' : 'leafDark');
+  for (let wy = hall.roof + 7; wy + 4 < PATH.top - 4; wy += 9) {
+    for (let wx = hall.x0 + 4; wx + 3 < hall.x1 - 1; wx += 6) {
+      const on = lit(wx * 3 + wy, time);
+      p.rect(wx, wy, 3, 5, on ? 'winLit' : 'winDark');
+      if (on) p.rect(wx, wy + 3, 3, 2, 'winLit2');
+    }
   }
+  crowns(p, 23, -8, W + 10, 64, 12, ['farTree', 'farTreeDark', 'farTreeDark'], (x) => x > 116 && x < 172);
+  for (let y = 97; y < PATH.top; y++) for (let x = 0; x < W; x++) p.set(x, y, hash(x, y, 8) < 0.4 ? 'lawnDark' : 'lawn');
+  for (let y = PATH.top; y < PATIO; y++) p.rect(0, y, W, 1, y === PATH.top ? 'mortar' : 'path');
 }
 
 /** Sky and campus: everything the cyclists pass in front of. */
 export function drawFar(pal: Pal, time: TimeOfDay, overcast = false) {
   const p = new Painter<StradaKey>(W, H, pal);
   const sky = overcast ? overcastColor : skyColor;
-  for (let y = 0; y < 96; y++) for (let x = 0; x < W; x++) p.setRGB(x, y, sky(time, pal, x, y));
+  for (let y = 0; y < 100; y++) for (let x = 0; x < W; x++) p.setRGB(x, y, sky(time, pal, x, y));
   if (!overcast && time === 'night') for (const s of STARS) p.set(s.x, s.y, 'star');
   if (!overcast && time === 'sunset') {
     for (let y = SUN.y - SUN.r; y <= SUN.y + SUN.r; y++) {
@@ -152,106 +126,17 @@ export function drawFar(pal: Pal, time: TimeOfDay, overcast = false) {
   return p.toCanvas();
 }
 
-/** The café's cream stucco front with a tall arched doorway full of warm light. */
-const CAFE = { x1: 46, top: 18 };
-
-function cafe(p: P) {
-  const { x1, top } = CAFE;
-  for (let y = top; y < PATIO + 2; y++) {
-    for (let x = 0; x <= x1; x++) {
-      const key: StradaKey = x >= x1 - 2 ? 'stuccoShade' : x <= 3 || (x >= x1 - 6 && x < x1 - 2) ? 'stuccoShade' : 'stucco';
-      p.set(x, y, key);
-    }
-  }
-  p.rect(0, top, x1 + 2, 3, 'stuccoShade');
-  p.rect(0, top + 3, x1 + 2, 1, 'stuccoDark');
-  const cx = 21;
-  const r = 14;
-  const archTop = 44;
-  const bottom = 108;
-  for (let y = archTop - r - 2; y < bottom; y++) {
-    for (let x = cx - r - 2; x <= cx + r + 1; x++) {
-      const d = Math.hypot(x + 0.5 - cx, y + 0.5 - archTop);
-      if (y < archTop && d > r + 2) continue;
-      // A moulded frame round the opening.
-      if ((y < archTop && d > r) || x < cx - r || x > cx + r - 1) {
-        p.set(x, y, x > cx || (y < archTop && x + 0.5 > cx) ? 'stuccoDark' : 'stuccoShade');
-        continue;
-      }
-      let key: StradaKey = y > 84 ? 'archLit2' : 'archLit';
-      if (x === cx || x === cx - 1 || y === 74 || y === 75 || (y < archTop && Math.abs(d - r * 0.55) < 0.7)) key = 'stuccoDark';
-      p.set(x, y, key);
-    }
-  }
-  // Pendant lamp, menu board and counter glimpsed inside.
-  p.rect(cx - 9, 50, 1, 6, 'stuccoDark');
-  p.rect(cx - 11, 56, 5, 2, 'bulb');
-  p.rect(cx + 4, 82, 8, 8, 'woodDark');
-  p.rect(cx + 5, 83, 6, 6, 'wood');
-  p.rect(cx - r, 96, r * 2, 2, 'woodDark');
-  p.rect(cx - r, 98, r * 2, 10, 'wood');
-  p.rect(cx - r, 98, r * 2, 1, 'woodLight');
-  // Step and wainscot.
-  p.rect(0, bottom, x1 + 1, PATIO + 2 - bottom, 'stuccoDark');
-  p.rect(0, bottom, x1 + 1, 1, 'stuccoShade');
-}
-
-/** A street lamp beyond the railing flying a blue-and-gold Cal banner. */
-const BANNER = fromRows(
-  [
-    'LLLLLLLLLLLLL',
-    '.BBBBBBBBBBB.',
-    '.BBBBBBBBBBB.',
-    '.BGGBBBBBBBB.',
-    '.GBBBGGBGBBB.',
-    '.GBBGBGBGBBB.',
-    '.GBBGBGBGBBB.',
-    '.BGGBGGBGGGB.',
-    '.BBBBBBBBBBB.',
-    '.GGGGGGGGGGG.',
-    '.BBBBBBBBBBB.',
-    '.BBBB...BBBB.',
-  ],
-  { L: 'lampPost', B: 'banner', G: 'bannerGold' } as Record<string, StradaKey>,
-);
-
-export const LAMP = { x: 160, head: 44 };
-
-function lamp(p: P) {
-  const { x, head } = LAMP;
-  p.rect(x - 3, head - 2, 8, 2, 'lampPost');
-  p.rect(x - 1, head - 4, 4, 2, 'lampPost');
-  p.rect(x - 2, head, 6, 6, 'lampGlass');
-  p.rect(x - 2, head, 1, 6, 'lampPost');
-  p.rect(x + 3, head, 1, 6, 'lampPost');
-  p.rect(x - 3, head + 6, 8, 2, 'lampPost');
-  p.rect(x, head + 8, 2, PATH.bottom + 2 - head - 8, 'lampPost');
-  p.rect(x - 2, PATH.bottom, 6, 3, 'lampPost');
-  stamp(p, { sprite: BANNER, x: x + 2, y: head + 14 });
-}
-
-/** Box hedge along the café side of the patio. */
-function hedge(p: P) {
-  const rng = mulberry32(23);
-  for (let x = 46; x < 140; ) {
-    const r = 5 + rng() * 3;
-    blob(p, x, 98 - r * 0.2, r, 140 + x, -0.15);
-    x += r * 1.1 + rng() * 2;
-  }
-  for (let x = 42; x < 142; x++) for (let y = 98; y < PATIO; y++) if (!p.filled(x, y)) p.set(x, y, 'leafDark');
-}
-
 /**
- * Brick paving in running bond, the joints converging on a vanishing point
- * so the courses grow toward the viewer.
+ * Paving in running bond, the joints converging on a vanishing point so the
+ * courses grow toward the viewer.
  */
 function patio(p: P) {
   const vx = 160;
-  const vy = 50;
-  const course = 9;
+  const vy = 40;
+  const course = 8;
   let row = 0;
   for (let y0 = PATIO; y0 < H; row++) {
-    const h = Math.max(3, Math.round((y0 - vy) / 11));
+    const h = Math.max(3, Math.round((y0 - vy) / 12));
     for (let y = y0; y < Math.min(H, y0 + h); y++) {
       const scale = 60 / (y - vy);
       for (let x = 0; x < W; x++) {
@@ -266,10 +151,9 @@ function patio(p: P) {
           continue;
         }
         const tone = hash(Math.floor(u / course), row, 13);
-        let key: StradaKey = tone < 0.25 ? 'brickDark' : tone < 0.8 ? 'brick' : 'brickLight';
+        let key: StradaKey = tone < 0.3 ? 'brickDark' : tone < 0.85 ? 'brick' : 'brickLight';
         if (y === y0 && key === 'brick') key = 'brickLight';
-        else if (y === y0 + h - 2 && key !== 'brickDark') key = 'brick';
-        if (hash(x, y, 77) < 0.04) key = 'brickDark';
+        if (hash(x, y, 77) < 0.03) key = 'brickDark';
         p.set(x, y, key);
       }
     }
@@ -277,12 +161,103 @@ function patio(p: P) {
   }
 }
 
+/** The café's arcaded front: a slate roof over two tall arches full of warm light. */
+function loggia(p: P) {
+  const x1 = 82;
+  for (let y = 14; y < 27; y++) {
+    const right = 68 + (y - 14);
+    for (let x = 0; x <= Math.min(right, x1 + 2); x++) p.set(x, y, (y - 14) % 3 === 2 ? 'slateDark' : x >= right - 1 ? 'slateDark' : 'slate');
+  }
+  p.rect(0, 27, x1 + 3, 2, 'stuccoShade');
+  p.rect(0, 29, x1 + 3, 1, 'stuccoDark');
+  for (let y = 30; y < PATIO; y++) for (let x = 0; x <= x1; x++) p.set(x, y, x >= x1 - 1 ? 'stuccoShade' : 'stucco');
+  const spring = 50;
+  for (const cx of [20, 60]) {
+    const r = 14;
+    for (let y = spring - r - 3; y < 102; y++) {
+      for (let x = cx - r - 3; x <= cx + r + 2; x++) {
+        const d = Math.hypot(x + 0.5 - cx, y + 0.5 - spring);
+        if (y < spring && d > r + 3) continue;
+        const inside = y < spring ? d <= r : x >= cx - r && x <= cx + r - 1;
+        if (!inside) {
+          p.set(x, y, x + 0.5 > cx ? 'stuccoShade' : 'stucco');
+          if (y < spring ? d > r + 2 : x === cx - r - 3 || x === cx + r + 2) p.set(x, y, 'stuccoDark');
+          continue;
+        }
+        let key: StradaKey = y > 78 ? 'archLit2' : 'archLit';
+        if (x - (cx - r) < 2 || y < spring - r * 0.55) key = 'archLit2';
+        if (Math.abs(x + 0.5 - cx) < 1 && y > spring - 4 && y < 76) key = 'stuccoDark';
+        if (y === 76) key = 'stuccoDark';
+        p.set(x, y, key);
+      }
+    }
+  }
+  // Pier capitals, a pendant lamp in each arch, and a counter inside.
+  p.rect(36, spring - 2, 9, 2, 'stuccoDark');
+  p.rect(37, spring, 7, 52, 'stucco');
+  p.rect(42, spring, 2, 52, 'stuccoShade');
+  for (const cx of [20, 60]) {
+    p.rect(cx - 6, 40, 1, 8, 'stuccoDark');
+    p.rect(cx - 8, 48, 5, 2, 'bulb');
+    p.rect(cx - 12, 88, 24, 2, 'woodDark');
+    p.rect(cx - 12, 90, 24, 12, 'wood');
+  }
+  p.rect(0, 100, x1 + 1, PATIO - 100, 'stuccoDark');
+}
+
+/** Rounded hedge along the café front. */
+function hedge(p: P) {
+  const rng = mulberry32(23);
+  for (let x = -4; x < 112; ) {
+    const r = 9 + rng() * 5;
+    blob(p, x, 92 + rng() * 6 - r * 0.2, r, 140 + Math.round(x), 0.1);
+    x += r * 1.1;
+  }
+  for (let x = 0; x < 110; x++) for (let y = 96; y < 122; y++) if (!p.filled(x, y) || y > 112) p.set(x, y, y > 117 ? 'leafDeep' : 'leafDark');
+  for (let x = 0; x < 110; x += 2) for (let y = 104; y < 118; y += 2) if (hash(x, y, 9) < 0.25) p.rect(x, y, 2, 2, 'leafMid');
+}
+
+/** A street lamp beyond the railing flying a blue-and-gold Cal banner. */
+const BANNER = fromRows(
+  [
+    'LLLLLLLLLLLLL',
+    '.BBBBBBBBBBB.',
+    '.BBBBBBBBBBB.',
+    '.BBGGGGBBBBB.',
+    '.BGGBBBBBBBB.',
+    '.BGBBBBBBGBB.',
+    '.BGBBBGGBGBB.',
+    '.BGBBGBGBGBB.',
+    '.BGGBGBGBGBB.',
+    '.BBGGGGGBGGB.',
+    '.BBBBBBBBBBB.',
+    '.BBBBBBBBBBB.',
+    '.BBBBBBBBBBB.',
+    '.BBBB...BBBB.',
+  ],
+  { L: 'lampPost', B: 'banner', G: 'bannerGold' } as Record<string, StradaKey>,
+);
+
+export const LAMP = { x: 128, head: 48 };
+
+function lamp(p: P) {
+  const { x, head } = LAMP;
+  p.rect(x - 3, head - 2, 8, 2, 'lampPost');
+  p.rect(x - 1, head - 4, 4, 2, 'lampPost');
+  p.rect(x - 2, head, 6, 7, 'lampGlass');
+  p.rect(x - 2, head, 1, 7, 'lampPost');
+  p.rect(x + 3, head, 1, 7, 'lampPost');
+  p.rect(x - 3, head + 7, 8, 2, 'lampPost');
+  p.rect(x, head + 9, 2, 114 - head - 9, 'lampPost');
+  stamp(p, { sprite: BANNER, x: x + 2, y: head + 13 });
+}
+
 /**
  * White balustrade: top and bottom rails with vase-shaped balusters lit from
  * the left, and ball-topped posts.
  */
 function balustrade(p: P, x0: number, x1: number, top: number, base: number, spacing: number, bw: number, posts: number[]) {
-  const rail = Math.max(2, Math.round(bw * 0.7));
+  const rail = Math.max(2, Math.round(bw * 0.8));
   for (let x = x0; x <= x1; x++) {
     for (let i = 0; i < rail; i++) p.set(x, top + i, i === 0 ? 'railLight' : i === rail - 1 ? 'railShade' : 'rail');
     for (let i = 0; i < rail; i++) p.set(x, base - rail + 1 + i, i === 0 ? 'railLight' : i === rail - 1 ? 'railShade' : 'rail');
@@ -292,8 +267,7 @@ function balustrade(p: P, x0: number, x1: number, top: number, base: number, spa
   for (let bx = x0 + spacing / 2; bx < x1; bx += spacing) {
     for (let y = y0; y <= y1; y++) {
       const t = (y - y0) / Math.max(1, y1 - y0);
-      // Neck, bulging belly, then a short foot.
-      const w = t < 0.12 ? bw : t < 0.25 ? bw * 0.55 : t > 0.9 ? bw : bw * (0.6 + 0.45 * Math.sin(((t - 0.25) / 0.65) * Math.PI));
+      const w = t < 0.1 ? bw : t < 0.22 ? bw * 0.55 : t > 0.9 ? bw : bw * (0.6 + 0.45 * Math.sin(((t - 0.22) / 0.68) * Math.PI));
       const half = Math.max(1, Math.round(w / 2));
       for (let x = Math.round(bx) - half; x < Math.round(bx) + half; x++) {
         const rel = (x - (Math.round(bx) - half)) / (half * 2);
@@ -302,74 +276,59 @@ function balustrade(p: P, x0: number, x1: number, top: number, base: number, spa
     }
   }
   for (const px of posts) {
-    const pw = Math.round(bw * 1.6);
-    const ballR = bw * 0.9;
+    const pw = Math.round(bw * 1.7);
+    const ballR = bw * 0.95;
     for (let y = top - 2; y <= base; y++) {
       for (let i = 0; i < pw; i++) p.set(px + i, y, i < pw * 0.3 ? 'railLight' : i >= pw * 0.75 ? 'railShade' : 'rail');
     }
-    p.rect(px - 1, top - 3, pw + 2, 2, 'railShade');
-    p.rect(px - 1, top - 3, pw + 2, 1, 'rail');
+    p.rect(px - 1, top - 4, pw + 2, 2, 'railShade');
+    p.rect(px - 1, top - 4, pw + 2, 1, 'rail');
+    p.rect(px + 1, top - 5, pw - 2, 1, 'railShade');
     const bcx = px + pw / 2;
-    const bcy = top - 3 - ballR;
-    for (let y = Math.floor(bcy - ballR); y < top - 3; y++) {
+    const bcy = top - 5 - ballR;
+    for (let y = Math.floor(bcy - ballR); y < top - 5; y++) {
       for (let x = Math.floor(bcx - ballR); x <= bcx + ballR; x++) {
         const d = Math.hypot(x + 0.5 - bcx, y + 0.5 - bcy);
         if (d >= ballR) continue;
-        const lit = x + 0.5 - bcx + (y + 0.5 - bcy) < -ballR * 0.4;
-        p.set(x, y, lit ? 'railLight' : x + 0.5 - bcx > ballR * 0.35 ? 'railShade' : 'rail');
+        const litSide = x + 0.5 - bcx + (y + 0.5 - bcy) < -ballR * 0.4;
+        p.set(x, y, litSide ? 'railLight' : x + 0.5 - bcx > ballR * 0.35 ? 'railShade' : 'rail');
       }
     }
   }
 }
 
-/** A patio heater: a dish-shaped reflector on a tall post above a cylindrical tank housing. */
+/** A patio heater: a wide reflector dish on a tall post above a cylindrical tank housing. */
 function heater(p: P, x: number, capY: number, baseY: number, cap: number, time: TimeOfDay) {
   const half = cap / 2;
-  const dish = Math.max(3, Math.round(cap / 6));
+  const dish = Math.max(3, Math.round(cap / 7));
   p.rect(x - 1, capY - dish - 2, 2, 2, 'heaterDark');
   for (let i = 0; i < dish; i++) {
-    const w = Math.round(half * (0.3 + (0.7 * (i + 1)) / dish));
-    p.rect(x - w, capY - dish + i, w * 2, 1, i === 0 ? 'heaterLight' : i === dish - 1 ? 'heaterDark' : 'heater');
-    p.rect(x - w, capY - dish + i, Math.max(1, Math.round(w * 0.6)), 1, 'heaterLight');
+    const w = Math.round(half * (0.25 + (0.75 * (i + 1)) / dish));
+    p.rect(x - w, capY - dish + i, w * 2, 1, i === dish - 1 ? 'heaterDark' : 'heater');
+    p.rect(x - w, capY - dish + i, Math.max(1, Math.round(w * 0.7)), 1, 'heaterLight');
   }
-  const bw = Math.max(2, Math.round(cap / 10));
-  const bh = Math.max(3, Math.round(cap / 6));
-  p.rect(x - bw, capY, bw * 2, bh, 'heaterDark');
-  if (time !== 'day') p.rect(x - bw + 1, capY + 1, bw * 2 - 2, bh - 2, 'flame');
-  else p.rect(x - bw, capY, 1, bh, 'heater');
-  const pole = Math.max(2, Math.round(cap / 14));
-  const hw = Math.round(cap * 0.16);
+  const bw = Math.max(2, Math.round(cap / 12));
+  const bh = Math.max(4, Math.round(cap / 4));
+  for (let y = capY; y < capY + bh; y++) {
+    for (let i = -bw; i < bw; i++) {
+      const glowing = time !== 'day' && i > -bw && i < bw - 1 && y > capY;
+      p.set(x + i, y, glowing ? 'flame' : (y - capY) % 2 ? 'heaterDark' : 'heater');
+    }
+  }
+  const pole = Math.max(2, Math.round(cap / 16));
+  const hw = Math.round(cap * 0.15);
   const hh = Math.round((baseY - capY) * 0.3);
   const poleTop = capY + bh;
-  p.rect(x - pole / 2, poleTop, pole, baseY - hh - poleTop, 'heater');
-  p.rect(x - pole / 2, poleTop, 1, baseY - hh - poleTop, 'heaterLight');
+  p.rect(Math.round(x - pole / 2), poleTop, pole, baseY - hh - poleTop, 'heater');
+  p.rect(Math.round(x - pole / 2), poleTop, 1, baseY - hh - poleTop, 'heaterLight');
   p.rect(x - hw - 1, baseY - hh - 2, hw * 2 + 2, 2, 'heaterDark');
   for (let y = baseY - hh; y < baseY - 1; y++) {
     for (let i = -hw; i < hw; i++) {
       const rel = (i + hw) / (hw * 2);
-      p.set(x + i, y, rel < 0.25 ? 'heaterLight' : rel > 0.75 ? 'heaterDark' : 'heater');
+      p.set(x + i, y, rel < 0.25 ? 'heaterLight' : rel > 0.7 ? 'heaterDark' : 'heater');
     }
   }
   p.rect(x - hw - 2, baseY - 2, hw * 2 + 4, 3, 'heaterDark');
-}
-
-/** A folding bistro chair seen side on: its back post on `x`, the seat reaching toward the table. */
-function chair(p: P, x: number, seat: number, floor: number, dir: 1 | -1, size = 1) {
-  const depth = Math.round(8 * size);
-  const back = Math.round(12 * size);
-  const legW = size > 1.2 ? 2 : 1;
-  for (let y = seat - back; y <= floor; y++) for (let i = 0; i < legW; i++) p.set(x + dir * i, y, 'chairDark');
-  p.rect(Math.min(x, x + dir * 3), seat - back, 4, 1, 'chair');
-  p.rect(Math.min(x, x + dir * 3), seat - back + 3, 4, 1, 'chair');
-  for (let i = 0; i <= depth; i++) {
-    p.set(x + dir * i, seat, 'chair');
-    p.set(x + dir * i, seat + 1, 'chairDark');
-  }
-  for (let y = seat + 2; y <= floor; y++) {
-    const u = (y - seat - 2) / Math.max(1, floor - seat - 2);
-    p.set(x + dir * Math.round(depth - u * 1), y, 'chairDark');
-    p.set(x + dir * Math.round(u * depth), y, 'chairDark');
-  }
 }
 
 /** A round bistro table in three-quarter view: an oval top, its rim, a pedestal and a foot. */
@@ -388,111 +347,94 @@ function table(p: P, cx: number, top: number, floor: number, rx: number) {
   p.rect(Math.round(cx - rx * 0.5), floor - 1, Math.round(rx), 2, 'woodDark');
 }
 
-/** Patrons at the tables beyond the back railing, drawn into the scenery. */
-function backPatrons(p: P, time: TimeOfDay) {
-  const floor = 112;
-  const people: Figure<StradaKey>[] = [];
-  people.push({ sprite: smallPatron(LOOKS.white), x: 70, y: floor - 14 });
-  people.push({ sprite: CUP, x: 82, y: floor - 8 });
-  table(p, 84, floor - 5, floor, 6);
+/** Patrons at the tables beyond the middle railing, part of the scenery. */
+function backTables(p: P, time: TimeOfDay) {
+  const floor = 134;
+  chair(p, 82, floor, 40, 1);
+  table(p, 104, 118, floor, 12);
+  facing(p, 106, 118, 40, LOOKS.green);
+  seated(p, 82, floor, 40, LOOKS.white, 1, 'rest', 118);
+  cup(p, 101, 118, 0.8);
+  chair(p, 166, floor, 40, 1);
+  table(p, 190, 118, floor, 12);
+  laptop(p, 180, 118, 1, 0.8);
+  seated(p, 166, floor, 40, LOOKS.yellow, 1, 'type', 118);
   if (time !== 'night') {
-    people.push({ sprite: smallPatron(LOOKS.green, true), x: 92, y: floor - 14 });
-    people.push({ sprite: smallPatron(LOOKS.yellow), x: 168, y: floor - 14 });
-    table(p, 182, floor - 5, floor, 6);
-    people.push({ sprite: CUP, x: 181, y: floor - 8 });
-  }
-  for (const f of people) stamp(p, f);
-}
-
-/** Two friends at a table behind the front-right railing. */
-const PAIR = { cx: 268, floor: 144 };
-
-function pair(p: P, time: TimeOfDay) {
-  const { cx, floor } = PAIR;
-  const y = floor - 32;
-  const top = y + HANDS + 1;
-  chair(p, cx - 29, y + 26, floor, 1);
-  chair(p, cx + 31, y + 26, floor, -1);
-  if (time !== 'night') {
-    stamp(p, { sprite: friend(LOOKS.green), x: cx - 31, y });
-    stamp(p, { sprite: friendLongHair(LOOKS.white, true), x: cx + 13, y });
-  }
-  table(p, cx, top + 2, floor, 14);
-  if (time !== 'night') {
-    stamp(p, { sprite: CUP, x: cx - 9, y: top - 3 });
-    stamp(p, { sprite: CUP, x: cx + 5, y: top - 3 });
+    chair(p, 212, floor, 40, -1);
+    seated(p, 212, floor, 40, LOOKS.red, -1, 'rest', 118);
+    cup(p, 196, 118, 0.8);
   }
 }
 
-/** The tables where the chatting friends and the student sit; they stay when the people leave. */
+/** The near tables: the typists' and the chatting friends', which stay when the people leave, and one left for later. */
 function nearTables(p: P) {
+  for (const t of TYPISTS) {
+    chair(p, t.x, t.floor, t.h, t.dir);
+    table(p, t.table.cx, t.table.top + 1, t.floor, t.table.rx);
+  }
   const c = CHATTER_TABLE;
-  const cSeat = CHATTER_POS.y + CHATTER_SEAT;
-  chair(p, CHATTER_POS.x + 2, cSeat, c.floor, 1);
-  chair(p, CHATTER_POS.x + 73, cSeat, c.floor, -1);
-  table(p, c.cx, CHATTER_POS.y + HANDS + 1, c.floor, c.rx);
-  const t = TYPING_TABLE;
-  chair(p, TYPING_POS.x + 2, TYPING_POS.y + TYPING_SEAT, t.floor, 1, 1.4);
-  table(p, t.cx, TYPING_POS.y + HANDS + 1, t.floor, t.rx);
+  for (const s of CHATTER_SEATS) chair(p, s.x, c.floor, s.h, s.dir);
+  table(p, c.cx, c.top + 1, c.floor, c.rx);
+  // An empty table in the middle, chairs pulled out, cups left behind.
+  chair(p, 96, 164, 52, 1);
+  table(p, 118, 136, 164, 16);
+  cup(p, 112, 135);
+  // Folding chairs at the front left.
+  chair(p, 12, 172, 58, 1);
 }
 
-/** The plum trees' trunks: one beside the café, a big twisted one mid-patio, one at the far right. */
-function trunks(p: P) {
-  branch(p, [[60, 122], [61, 100], [57, 76], [50, 52], [40, 30], [30, 8]], 8, 4);
-  branch(p, [[57, 78], [72, 60], [88, 44], [104, 30]], 4, 3);
-  branch(p, [[50, 54], [62, 38], [68, 18]], 4, 3);
-  branch(p, [[312, 124], [310, 92], [304, 62], [296, 36]], 7, 4);
+/** The trunk of the plum beside the café, behind the hedge. */
+function leftTrunk(p: P) {
+  branch(p, [[30, 122], [27, 98], [33, 74], [25, 52], [35, 30], [50, 10], [58, -4]], 8, 4);
 }
 
-export const TREE_WELL = { x0: 182, x1: 214, top: 164 };
-
-function bigTree(p: P) {
-  const { x0, x1, top } = TREE_WELL;
-  for (let y = top; y < top + 8; y++) {
-    for (let x = x0; x <= x1; x++) {
-      const edge = y === top || x === x0 || x === x1;
-      p.set(x, y, edge ? (y === top ? 'brickLight' : 'brickDark') : y === top + 1 ? 'mortar' : 'soil');
-    }
+/** The big plum's twisting trunk rising from the paving. */
+function bigTrunk(p: P) {
+  for (let x = 186; x < 216; x++) {
+    const y = 164 + Math.round(2 * Math.sin((x - 186) * 0.25));
+    p.rect(x, y - 2, 1, 3, 'trunkDark');
   }
-  branch(p, [[198, 166], [197, 140], [193, 116], [197, 96], [191, 74], [178, 54], [162, 36], [150, 16]], 12, 5);
-  branch(p, [[197, 98], [214, 82], [236, 68], [262, 54], [292, 40], [318, 30]], 8, 4);
-  branch(p, [[191, 76], [205, 58], [212, 40], [214, 20]], 6, 3);
-  branch(p, [[236, 68], [244, 50], [250, 30]], 4, 3);
-  branch(p, [[178, 56], [170, 40], [172, 22]], 4, 3);
-  // Bark ridges down the trunk.
-  for (let y = 100; y < 164; y++) if (hash(1, y >> 2, 9) < 0.5) p.set(193 + Math.round(2 * Math.sin(y * 0.1)), y, 'trunkDark');
-  const rng = mulberry32(41);
-  for (let x = x0 + 3; x < x1 - 2; ) {
-    const r = 2.5 + rng() * 1.5;
-    if (Math.abs(x - 198) > 7) blob(p, x, top + 1, r, 700 + x, -0.05);
-    x += r * 1.6;
+  branch(p, [[200, 166], [198, 140], [204, 116], [198, 94], [205, 74], [199, 60]], 22, 13);
+  for (let y = 66; y < 162; y++) {
+    if (hash(1, y >> 2, 9) < 0.55) p.set(196 + Math.round(3 * Math.sin(y * 0.09)), y, 'trunkDark');
+    if (hash(2, y >> 2, 9) < 0.4) p.set(203 + Math.round(2 * Math.sin(y * 0.12 + 1)), y, 'trunkDark');
   }
 }
 
-/** Everything on and around the patio behind the front railing. */
+/** Everything on and around the patio behind the front-right railings. */
 export function drawMid(pal: Pal, time: TimeOfDay) {
   const p = new Painter<StradaKey>(W, H, pal);
-  lamp(p);
-  trunks(p);
-  hedge(p);
-  cafe(p);
-  backPatrons(p, time);
-  balustrade(p, 44, 214, 104, 119, 6, 3, [44, 98, 152, 210]);
   patio(p);
-  heater(p, 234, 72, 126, 20, time);
-  pair(p, time);
+  loggia(p);
+  leftTrunk(p);
+  hedge(p);
+  lamp(p);
+  heater(p, 150, 72, 114, 24, time);
+  backTables(p, time);
+  balustrade(p, 74, 226, 112, 142, 6, 3, [74, 150, 220]);
   nearTables(p);
-  heater(p, 78, 50, 166, 36, time);
-  bigTree(p);
+  heater(p, 86, 48, 162, 44, time);
+  bigTrunk(p);
   return p.toCanvas();
 }
 
-/** String lights strung from the café to the big plum and on across the patio. */
+/** The plums' limbs reaching out over the patio. */
+const LIMBS: [pts: [number, number][], from: number, to: number][] = [
+  [[[199, 62], [186, 46], [170, 30], [160, 10], [156, -6]], 11, 5],
+  [[[203, 62], [212, 42], [216, 18], [214, -6]], 10, 5],
+  [[[204, 72], [228, 58], [256, 46], [290, 34], [326, 28]], 9, 4],
+  [[[186, 46], [168, 44], [148, 46], [128, 38]], 5, 3],
+  [[[228, 58], [238, 72], [246, 82]], 4, 3],
+  [[[35, 30], [60, 24], [90, 20], [120, 12]], 5, 3],
+  [[[25, 52], [10, 42], [-4, 38]], 4, 2],
+];
+
+/** String lights from the café roof to the big plum and on across the patio. */
 /** Each strand: from, to, how far it sags, and where its first bulb hangs. */
 const STRANDS: [x0: number, y0: number, x1: number, y1: number, sag: number, seed: number][] = [
-  [46, 34, 194, 70, 18, 0],
-  [194, 70, 320, 50, 12, 3],
-  [104, 30, 194, 70, 6, 6],
+  [80, 28, 196, 54, 14, 0],
+  [196, 54, 320, 32, 12, 3],
+  [30, 20, 80, 28, 4, 5],
 ];
 
 function strand([x0, y0, x1, y1, sag, seed]: (typeof STRANDS)[number]) {
@@ -502,23 +444,15 @@ function strand([x0, y0, x1, y1, sag, seed]: (typeof STRANDS)[number]) {
     const u = (x - x0) / (x1 - x0);
     const y = Math.round(y0 + (y1 - y0) * u + sag * 4 * u * (1 - u));
     wire.push([x, y]);
-    if ((x - x0 + seed) % 9 === 4) bulbs.push([x, y + 1]);
+    if ((x - x0 + seed) % 10 === 4) bulbs.push([x, y + 1]);
   }
   return { wire, bulbs };
 }
 
-function stringLights(p: P) {
-  for (const s of STRANDS) {
-    const { wire, bulbs } = strand(s);
-    for (const [x, y] of wire) p.set(x, y, 'wire');
-    for (const [bx, by] of bulbs) p.rect(bx, by, 2, 2, 'bulb');
-  }
-}
-
 /** Heater burners: centre x, the burner's top row, and the reflector width. */
 const HEATERS: [x: number, capY: number, cap: number][] = [
-  [78, 50, 36],
-  [234, 72, 20],
+  [86, 48, 44],
+  [150, 72, 24],
 ];
 
 /**
@@ -545,8 +479,8 @@ export function drawGlow(pal: Pal, time: TimeOfDay): HTMLCanvasElement | null {
   }
   const heat = rgb(pal.heaterGlow);
   for (const [hx, capY, cap] of HEATERS) {
-    const r = cap * 0.4;
-    const cy = capY + cap / 12;
+    const r = cap * 0.45;
+    const cy = capY + cap / 8;
     for (let y = Math.floor(cy - r); y <= cy + r; y++) {
       for (let x = Math.floor(hx - r); x <= hx + r; x++) {
         put(x, y, heat, (night ? 0.7 : 0.5) * glowAt(Math.hypot((x | 1) - hx, (y | 1) - cy) / r, 3));
@@ -568,25 +502,49 @@ export function drawGlow(pal: Pal, time: TimeOfDay): HTMLCanvasElement | null {
   return c;
 }
 
-/** The plum canopy, string lights and front-right balustrade that frame the scene. */
-export function drawFg(pal: Pal) {
-  const p = new Painter<StradaKey>(W, H, pal);
-  stringLights(p);
+/** Leaf clusters: a band across the top, heavier masses at either side, and tufts along the limbs. */
+function canopy(p: P) {
   const rng = mulberry32(5);
   const clumps: [number, number, number][] = [];
-  for (let y = -4, row = 0; y < 80; y += 7, row++) {
-    for (let x = -6 + (row % 2) * 5; x < W + 8; x += 10) {
-      const cx = x + (rng() - 0.5) * 5;
-      const cy = y + (rng() - 0.5) * 4;
-      if (cy > canopyEdge(cx) - 4) continue;
-      clumps.push([cx, cy, 7 + rng() * 3]);
+  for (let x = -6; x < W + 8; x += 8) clumps.push([x + rng() * 4, -2 + rng() * 7, 6 + rng() * 3]);
+  for (let y = 4; y < 60; y += 7) {
+    for (let x = -6; x < W + 8; x += 8) {
+      const edge = x < 100 ? 40 - x * 0.22 + 6 * noise(x, y, 9, 2) : x > 226 ? 26 + (x - 226) * 0.5 : 10;
+      if (y < edge && rng() < 0.85) clumps.push([x + (rng() - 0.5) * 6, y + (rng() - 0.5) * 4, 4.5 + rng() * 3]);
     }
   }
-  clumps.forEach(([x, y, r], i) => blob(p, x + 2, y + 3, r + 1, 500 + i, -0.4));
-  for (let x = 0; x < W; x++) {
-    for (let y = 0; y < canopyEdge(x) - 6; y++) if (!p.filled(x, y)) p.set(x, y, 'leafDeep');
+  for (const [pts] of LIMBS) {
+    for (let i = 1; i < pts.length; i++) {
+      const [ax, ay] = pts[i - 1];
+      const [bx, by] = pts[i];
+      const len = Math.hypot(bx - ax, by - ay);
+      for (let s = 0; s < len; s += 7) {
+        if (rng() < 0.35) continue;
+        const u = s / len;
+        clumps.push([ax + (bx - ax) * u + (rng() - 0.5) * 8, ay + (by - ay) * u - 2 + (rng() - 0.5) * 8, 3.5 + rng() * 2.5]);
+      }
+    }
   }
-  clumps.forEach(([x, y, r], i) => blob(p, x, y, r, 600 + i));
-  balustrade(p, 212, W + 4, 132, 175, 10, 6, [212, 300]);
+  clumps.forEach(([x, y, r], i) => blob(p, x + 2, y + 2, r, 500 + i, -0.45));
+  clumps.forEach(([x, y, r], i) => {
+    if (i % 4 !== 3) blob(p, x, y, r * 0.85, 600 + i, -0.1);
+  });
+}
+
+/** The canopy, string lights and the two railings in the front right that frame the scene. */
+export function drawFg(pal: Pal) {
+  const p = new Painter<StradaKey>(W, H, pal);
+  for (const [pts, from, to] of LIMBS) branch(p, pts, from, to);
+  canopy(p);
+  for (const s of STRANDS) {
+    const { wire, bulbs } = strand(s);
+    for (const [x, y] of wire) p.set(x, y, 'wire');
+    for (const [bx, by] of bulbs) {
+      p.rect(bx, by, 2, 2, 'bulb');
+      p.set(bx, by - 1, 'wire');
+    }
+  }
+  balustrade(p, 220, W + 4, 124, 153, 9, 5, [220, 300]);
+  balustrade(p, 214, W + 4, 150, H + 4, 13, 7, [210]);
   return p.toCanvas();
 }

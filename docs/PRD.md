@@ -42,13 +42,13 @@ Face Doe from the Glade at lawn level. Doe must read as a long pale facade with 
 
 ### Caffè Strada
 
-The patio of the real café at College Avenue and Bancroft Way, seen from inside the front railing: the café's stucco corner with its warm arched window on the left, flowering plum trees overhead, string lights from the café to the big plum, wooden tables with students, patio heaters, and Bancroft Way behind the back railing with campus halls and trees beyond. Two street lamps carry blue-and-gold Cal banners. After dark the lamps, string lights and heaters glow in stepped rings, and the windows across Bancroft light up. Rain brings the same overcast deck as the Glade, in this scene's colours.
+The brick patio of the real café at College Avenue and Bancroft Way, seen close up from among the tables: the café's stucco front with its warm arched doorway on the left, a dense canopy of plum trees overhead with thick twisting trunks, string lights from the café to the big plum, a tall patio heater in front and a smaller one at the back, white balustrades with ball-topped posts (a large corner of it in the front right), and a street lamp with a blue-and-gold Cal banner beyond the back railing. Past the railing a path runs along a lawn, with campus trees and a hall beyond. The paving is red brick in running bond, its courses growing toward the viewer. People are drawn large: the student at the front table and the three friends at the centre table are each about 32 pixels tall, with two more friends behind the front railing and smaller patrons beyond the back railing. After dark the lamp, string lights and heater burners glow in stepped rings, and the hall's windows light up. Rain brings the same overcast deck as the Glade, in this scene's colours.
 
-Now and then an AC Transit bus pulls in to the stop on Bancroft, waits and pulls away, and cyclists ride past in either direction. These are scenery only and make no sound.
+Now and then cyclists ride along the path beyond the railing in either direction. They are scenery only and make no sound.
 
 ### Berkeley Marina
 
-The grassy shore beside the Berkeley Marina pier, looking west across the bay. Nature leads and the boardwalk stays secondary: open grass with wildflowers, a curving path, reeds, riprap rocks along the water and a Monterey cypress framing the top left. The pier runs out on the left with a few people fishing; their rods twitch now and then and their lines hang down to the water. San Francisco's skyline, Alcatraz and the Golden Gate Bridge are visible in the distance. At sunset the sun sets between the bridge towers; at night the bridge and city lights glow and the moon lays a path on the water. Small sailboats drift across the bay except at night.
+The grassy shore beside the Berkeley Marina pier, looking west across the bay. Nature leads and the boardwalk stays secondary: open grass with wildflowers, a curving path, reeds, riprap rocks along the water, and open sky above with no tree framing the corner. The pier runs out on the left with a few people fishing; their rods twitch now and then and their lines hang down to the water. San Francisco's skyline, Alcatraz and the Golden Gate Bridge are visible in the distance. At sunset the sun sets between the bridge towers; at night the bridge and city lights glow and the moon lays a path on the water. Small sailboats ride on the bay except at night, each swaying slowly back and forth and bobbing a pixel on the swell.
 
 ## 5. Interface requirements
 
@@ -98,15 +98,16 @@ All corner menus attach to the visible scene rectangle, not the browser window, 
 
   An element added at one time of day keeps its place, mute and volume when the time changes. If the new time doesn't offer it, its sound fades out and its sprite hides; both come back when you switch back.
 - Rain loops beneath the cloud; the songbird chirps intermittently from its branch.
-- Café chatter (Strada): a steady loop of a real café, with the clink of cups and spoons in it, from the three friends at the centre table, who talk, sip and nod.
-- Laptop typing (Strada): soft, even keyboard typing from the student working at the front-left table.
-- House sparrow (Strada, day): hops between spots on the front railing and chirps every so often.
-- Crow (Strada, sunset): perches on the bannered street lamp and caws now and then, standing in for Berkeley's evening crow flights.
-- Crickets (Strada, night): a cricket in the patio planter, the same periodic chorus as the Glade.
-- Waves (Marina): a steady loop of water lapping on rocks; its sprite is the foam riding up and slipping back along the shore.
-- Foghorn (Marina): a distant diaphone from the bay's own East Brother lighthouse every 25 to 50 seconds; its sprite is a fog bank resting over the Marin Headlands.
-- Western gull (Marina, day), Canada geese (sunset) and black-crowned night heron (night): the gull and heron stand on a piling by the shore and the geese graze on the grass, each calling every so often.
-- Sea lions (Marina): sea lions hauled out on a float bark now and then, the one propped up lifting its head.
+- Café chatter (Strada): a steady loop of a real café, with the clink of cups and spoons in it, from the three friends at the right-hand table, who talk, sip and nod.
+- Laptop typing (Strada): soft keyboard typing from two people working on laptops, heard as several keyboards at once, each a little apart in pitch and stereo position. It sits well below the chatter.
+- House sparrow (Strada, day): three sparrows hop between spots on the front railing, never two on one spot, and chirp in turn.
+- Crow (Strada, sunset): two crows, one on the bannered street lamp and one on the big plum's long limb, caw in turn now and then, standing in for Berkeley's evening crow flights.
+- Crickets (Strada, night): a cricket on the rim of the big plum's tree well, the same periodic chorus as the Glade.
+- Waves (Marina): a loop of real surf, waves breaking and washing back every ten seconds or so; its sprite is the foam riding up and slipping back along the shore.
+- Foghorn (Marina): a distant diaphone from the bay's own East Brother lighthouse every one to two minutes; its sprite is a ferry in front of a low fog bank under the Marin Headlands. The fog stays low and thin so the ferry, the bridge's north end and Mount Tamalpais remain clear, and the ferry drifts slowly back and forth. After dark its windows are lit.
+- Western gull (Marina, day), Canada geese (sunset) and black-crowned night heron (night): two gulls stand on the pilings and two more wheel over the bay, the geese graze on the grass, and the heron stands alone on the tallest piling. Gulls call often, a few at a time from different birds; the geese and heron call every so often. The geese honk clearly over the surf, never buried under it.
+- Sea lions (Marina): sea lions hauled out on a float break into runs of short, honking barks like the Pier 39 colony, several voices barking over each other, the one propped up lifting its head. Use a clean recording; no crowd, wind or engine noise under the barks.
+- Groups sound like groups: gulls, geese, sea lions, sparrows and crows call in bursts of a few calls from several individuals, each with its own pitch, loudness and stereo position, spread out and sometimes overlapping. Lone animals (the Glade's birds, the heron) and the foghorn call singly.
 - The Strada and Marina sounds are all real recordings, credited in the README. They have no synthesised stand-in and stay silent if a file fails to load. Looped recordings carry a short copy of their own end before the start and of their start after the end, and loop between those points, so encoder padding never lands on the loop point.
 - Squirrel (day): a fox squirrel on the songbird's branch flicks its tail and chitters now and then, with a rustle of leaves.
 - Mourning dove (sunset): a dove the songbird's size, on the same branch, lowers its head and puffs its breast as it gives a soft "oo-WOO-oo... oo... oo" every so often. The call is a real recording, `src/audio/sounds/dove.mp3`: one perch-coo from xeno-canto XC128006 (CC BY-SA 3.0, credited in the README). The background noise is removed entirely: only the coo's own pitch and harmonics are kept, so the gaps between notes are silent. A synthesised coo plays if it fails to load.

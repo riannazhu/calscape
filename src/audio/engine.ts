@@ -23,28 +23,29 @@ const LOOP_PAD_S = 0.5;
 const LOOP_FADE_IN_S = 0.8;
 
 /**
- * Everything is background: rain and breeze sit low as beds, and the animals
- * are quieter still so no single sound pulls focus.
+ * Gain at full volume. Elements start at half, so these are twice the level
+ * each sound is heard at when first added. Everything is background: rain
+ * and breeze sit low as beds, and the animals call over them now and then.
  */
 const BASE_LEVEL: Record<ElementId, number> = {
-  rain: 0.3,
-  bird: 0.14,
-  bell: 0.3,
-  squirrel: 0.12,
-  dove: 0.16,
-  wind: 0.18,
-  crickets: 0.07,
-  owl: 0.16,
-  chatter: 0.24,
-  typing: 0.14,
-  sparrow: 0.1,
-  crow: 0.12,
-  waves: 0.3,
-  foghorn: 0.13,
-  gull: 0.12,
-  geese: 0.12,
-  heron: 0.14,
-  sealions: 0.1,
+  rain: 0.6,
+  bird: 0.28,
+  bell: 0.6,
+  squirrel: 0.24,
+  dove: 0.32,
+  wind: 0.36,
+  crickets: 0.14,
+  owl: 0.32,
+  chatter: 0.48,
+  typing: 0.12,
+  sparrow: 0.2,
+  crow: 0.24,
+  waves: 0.6,
+  foghorn: 0.39,
+  gull: 0.36,
+  geese: 0.4,
+  heron: 0.8,
+  sealions: 0.75,
 };
 /** Each sound comes from roughly where its sprite sits. */
 const PAN: Record<ElementId, number> = {
@@ -56,10 +57,10 @@ const PAN: Record<ElementId, number> = {
   wind: 0,
   crickets: 0,
   owl: -0.55,
-  chatter: 0,
-  typing: -0.6,
-  sparrow: 0.7,
-  crow: -0.1,
+  chatter: 0.5,
+  typing: -0.1,
+  sparrow: 0.6,
+  crow: 0.15,
   waves: 0.1,
   foghorn: 0.6,
   gull: -0.2,
@@ -99,14 +100,60 @@ const CALL_GAP_S: Partial<Record<ElementId, [number, number]>> = {
   squirrel: [20, 50],
   dove: [25, 60],
   owl: [30, 75],
-  sparrow: [10, 24],
-  crow: [20, 50],
-  gull: [18, 45],
+  sparrow: [8, 20],
+  crow: [20, 45],
+  gull: [8, 22],
   geese: [30, 70],
   heron: [35, 80],
-  sealions: [25, 60],
-  foghorn: [25, 50],
+  sealions: [15, 40],
+  foghorn: [60, 120],
 };
+/**
+ * Callers heard as a group rather than one animal: how many individuals, how
+ * far apart they sit in the stereo field, how many calls each burst holds,
+ * and the seconds between calls within a burst.
+ */
+interface Flock {
+  voices: number;
+  spread: number;
+  calls: [number, number];
+  gap: [number, number];
+}
+const FLOCKS: Partial<Record<ElementId, Flock>> = {
+  gull: { voices: 5, spread: 0.7, calls: [2, 4], gap: [0.8, 3.5] },
+  geese: { voices: 5, spread: 0.45, calls: [2, 5], gap: [0.4, 1.8] },
+  sealions: { voices: 6, spread: 0.45, calls: [3, 6], gap: [0.2, 1.2] },
+  sparrow: { voices: 3, spread: 0.5, calls: [1, 3], gap: [0.8, 3] },
+  crow: { voices: 3, spread: 0.6, calls: [1, 3], gap: [1, 3] },
+};
+/**
+ * Loops heard as several sources at once, each a copy of the recording
+ * offset in time, pitch and stereo position so they never line up.
+ */
+const LOOP_LAYERS: Partial<Record<ElementId, Voice[]>> = {
+  typing: [
+    { pan: -0.45, rate: 1, level: 1 },
+    { pan: 0.1, rate: 0.93, level: 0.7 },
+    { pan: 0.4, rate: 1.07, level: 0.5 },
+  ],
+};
+/** One animal in a flock: where it sits, how high its voice is, how loud. */
+interface Voice {
+  pan: number;
+  rate: number;
+  level: number;
+}
+
+/** The individuals in a flock, spaced evenly across its spread; a lone animal has one plain voice. */
+function flockVoices(id: ElementId): Voice[] {
+  const flock = FLOCKS[id];
+  if (!flock) return [{ pan: 0, rate: 1, level: 1 }];
+  return Array.from({ length: flock.voices }, (_, i) => ({
+    pan: flock.spread * ((i / (flock.voices - 1)) * 2 - 1),
+    rate: 0.88 + Math.random() * 0.24,
+    level: 0.5 + Math.random() * 0.4,
+  }));
+}
 /**
  * Recordings in ./sounds. If one fails to load, a Glade element falls back to
  * its synthesised sound and any other stays silent.
@@ -416,7 +463,7 @@ export class AudioEngine {
     const sources = new SourceSet();
     let duration: number;
     if (CALL_GAP_S[id]) {
-      duration = this.phrase(id, ctx, gain, sources);
+      duration = this.phrase(id, ctx, gain, sources, flockVoices(id));
     } else if (id === 'bell') {
       duration = this.strike(ctx, gain, ctx.currentTime + 0.02, sources);
     } else {
@@ -504,23 +551,27 @@ export class AudioEngine {
 
   /** Loops a padded recording between its pad points, from a random place, once it has loaded. */
   private recordedLoop(id: ElementId, ctx: AudioContext, dest: AudioNode, sources: SourceSet) {
-    const start = (buffer: AudioBuffer) => {
+    const start = (buffer: AudioBuffer, voice: Voice) => {
       const src = ctx.createBufferSource();
       src.buffer = buffer;
       src.loop = true;
       src.loopStart = LOOP_PAD_S;
       src.loopEnd = buffer.duration - LOOP_PAD_S;
+      src.playbackRate.value = voice.rate;
       const env = ctx.createGain();
       env.gain.setValueAtTime(0, ctx.currentTime);
-      env.gain.setTargetAtTime(1, ctx.currentTime, LOOP_FADE_IN_S / 3);
-      src.connect(env).connect(dest);
-      src.addEventListener('ended', () => env.disconnect());
+      env.gain.setTargetAtTime(voice.level, ctx.currentTime, LOOP_FADE_IN_S / 3);
+      const pan = ctx.createStereoPanner();
+      pan.pan.value = voice.pan;
+      src.connect(env).connect(pan).connect(dest);
+      src.addEventListener('ended', () => pan.disconnect());
       src.start(ctx.currentTime, LOOP_PAD_S + Math.random() * (buffer.duration - 2 * LOOP_PAD_S));
       sources.add(src);
     };
     void this.whenLoaded(id).then(() => {
       const buffer = this.samples[id];
-      if (buffer && !sources.stopped) start(buffer);
+      if (!buffer || sources.stopped) return;
+      for (const voice of LOOP_LAYERS[id] ?? [{ pan: 0, rate: 1, level: 1 }]) start(buffer, voice);
     });
   }
 
@@ -659,12 +710,15 @@ export class AudioEngine {
     return at - start + 0.2;
   }
 
-  /** One call from an animal; returns its length in seconds. */
-  private phrase(id: ElementId, ctx: AudioContext, dest: AudioNode, sources: SourceSet): number {
+  /** One call from an animal, or a burst from a flock; returns its length in seconds. */
+  private phrase(id: ElementId, ctx: AudioContext, dest: AudioNode, sources: SourceSet, voices: Voice[]): number {
     const sample = this.samples[id];
     if (!sample && !SYNTH_CALLS.has(id)) return 0;
+    const flock = FLOCKS[id];
     const length = sample
-      ? this.playSample(sample, ctx, dest, sources)
+      ? flock
+        ? this.flockBurst(flock, voices, sample, ctx, dest, sources)
+        : this.playSample(sample, ctx, dest, sources)
       : id === 'squirrel'
         ? this.chitter(ctx, dest, sources)
         : id === 'dove'
@@ -674,6 +728,49 @@ export class AudioEngine {
             : this.chirpPhrase(ctx, dest, sources);
     this.onCall?.(id, length * 1000);
     return length;
+  }
+
+  /**
+   * A few calls from different members of a flock, spread out and sometimes
+   * overlapping. Each is a stretch of the recording, pitched and placed for
+   * the animal calling.
+   */
+  private flockBurst(flock: Flock, voices: Voice[], buffer: AudioBuffer, ctx: AudioContext, dest: AudioNode, sources: SourceSet) {
+    const rand = ([a, b]: [number, number]) => a + Math.random() * (b - a);
+    const count = Math.round(rand([flock.calls[0] - 0.49, flock.calls[1] + 0.49]));
+    let at = 0;
+    let end = 0;
+    let last = -1;
+    for (let i = 0; i < count; i++) {
+      let v = Math.floor(Math.random() * voices.length);
+      if (v === last) v = (v + 1) % voices.length;
+      last = v;
+      const { pan, rate, level } = voices[v];
+      const long = buffer.duration > 2;
+      const offset = long ? Math.random() * buffer.duration * 0.5 : 0;
+      const dur = long ? Math.min(buffer.duration - offset, 1.2 + Math.random() * 2) : buffer.duration;
+      const when = ctx.currentTime + 0.05 + at;
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      src.playbackRate.value = rate;
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0, when);
+      env.gain.linearRampToValueAtTime(level, when + 0.03);
+      env.gain.setValueAtTime(level, when + dur / rate - 0.15);
+      env.gain.linearRampToValueAtTime(0, when + dur / rate);
+      const panner = ctx.createStereoPanner();
+      panner.pan.value = pan;
+      src.connect(env).connect(panner).connect(dest);
+      src.start(when, offset, dur);
+      src.addEventListener('ended', () => {
+        env.disconnect();
+        panner.disconnect();
+      });
+      sources.add(src);
+      end = Math.max(end, at + dur / rate);
+      at += rand(flock.gap);
+    }
+    return end;
   }
 
   private playSample(buffer: AudioBuffer, ctx: AudioContext, dest: AudioNode, sources: SourceSet): number {
@@ -821,11 +918,12 @@ export class AudioEngine {
     const { gain, release } = this.output(id, ctx);
     const sources = new SourceSet();
     const [min, max] = CALL_GAP_S[id] ?? [10, 30];
+    const voices = flockVoices(id);
     let timer = 0;
     let stopped = false;
     const schedule = (delay: number) => {
       timer = window.setTimeout(() => {
-        this.phrase(id, ctx, gain, sources);
+        this.phrase(id, ctx, gain, sources, voices);
         schedule((min + Math.random() * (max - min)) * 1000);
       }, delay);
     };

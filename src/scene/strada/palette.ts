@@ -110,6 +110,9 @@ export type StradaKey =
   | 'bug'
   | 'bugLight'
   | 'soil'
+  | 'slate'
+  | 'slateDark'
+  | 'farTreeLight'
   | 'planter'
   | 'outline'
   | 'outlineGlow';
@@ -133,10 +136,11 @@ const DAY: Palette<StradaKey> = {
   cloudDark: '#8c90a6',
   rain: '#eef4ff',
   rainTint: 'rgba(60, 70, 100, 0.16)',
-  farTree: '#5e8f72',
-  farTreeDark: '#4b7a60',
-  hall: '#ece2d4',
-  hallShade: '#c8b9ac',
+  farTreeLight: '#7fa86e',
+  farTree: '#5e8f62',
+  farTreeDark: '#45704e',
+  hall: '#e6cfc0',
+  hallShade: '#c4a898',
   hallRoof: '#bb5e50',
   hallRoofDark: '#8a4446',
   winLit: '#ffe6a8',
@@ -150,18 +154,18 @@ const DAY: Palette<StradaKey> = {
   hedgeLight: '#6aa64a',
   hedge: '#4f8a3e',
   hedgeDark: '#3a6c37',
-  leafLight: '#9fcc63',
-  leaf: '#76ad4c',
-  leafMid: '#5a9142',
-  leafDark: '#43733a',
-  leafDeep: '#30562f',
+  leafLight: '#93a85a',
+  leaf: '#738c46',
+  leafMid: '#5a723a',
+  leafDark: '#435a30',
+  leafDeep: '#2f4226',
   blossom: '#f6d6e0',
   trunk: '#4e3a36',
   trunkDark: '#33262a',
-  brick: '#b0685a',
-  brickLight: '#c98a6e',
-  brickDark: '#8e5048',
-  mortar: '#b8aaa2',
+  brick: '#a27464',
+  brickLight: '#b48874',
+  brickDark: '#865c50',
+  mortar: '#8e7a72',
   lawn: '#86b25e',
   lawnDark: '#6a9a4c',
   path: '#d9d0c6',
@@ -225,6 +229,8 @@ const DAY: Palette<StradaKey> = {
   bug: '#5a3a26',
   bugLight: '#b07a48',
   soil: '#5a4234',
+  slate: '#6f7488',
+  slateDark: '#50546a',
   planter: '#8a6a58',
   outline: '#d6eeff',
   outlineGlow: 'rgba(72, 156, 255, 0.6)',

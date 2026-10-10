@@ -57,13 +57,6 @@ export type MarinaKey =
   | 'path'
   | 'pathLight'
   | 'pathDark'
-  | 'leafLight'
-  | 'leaf'
-  | 'leafMid'
-  | 'leafDark'
-  | 'leafDeep'
-  | 'trunk'
-  | 'trunkDark'
   | 'lampPost'
   | 'lampGlass'
   | 'lampGlow'
@@ -166,13 +159,6 @@ const DAY: Palette<MarinaKey> = {
   path: '#d6c8b0',
   pathLight: '#e8dcc6',
   pathDark: '#b8a88e',
-  leafLight: '#6aa058',
-  leaf: '#4f8a4a',
-  leafMid: '#3d7242',
-  leafDark: '#2e5a38',
-  leafDeep: '#22442c',
-  trunk: '#5e463a',
-  trunkDark: '#3e2e2a',
   lampPost: '#3a3a50',
   lampGlass: '#f4efe2',
   lampGlow: '#ffe09a',

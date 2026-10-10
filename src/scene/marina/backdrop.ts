@@ -1,5 +1,4 @@
 import { person, stamp, type Figure } from '../figures';
-import { blob, branch } from '../foliage';
 import type { Palette, TimeOfDay } from '../palette';
 import { Painter, hash, mulberry32, noise, rgb, type RGB } from '../pixels';
 import { clamp01, glowAt, steppedSky, type Glow, type Sky } from '../sky';
@@ -73,11 +72,11 @@ export function skyColor(time: TimeOfDay, pal: Pal, x: number, y: number): RGB {
 }
 
 const starRng = mulberry32(19);
-/** Stars clear of the moon and the cypress in the top left. */
+/** Stars clear of the moon. */
 export const STARS = Array.from({ length: 70 }, () => ({
   x: Math.floor(starRng() * W),
   y: Math.floor(starRng() * 78),
-})).filter((s) => Math.hypot(s.x - MOON.x, s.y - MOON.y) > 10 && !(s.x < 80 && s.y < 70));
+})).filter((s) => Math.hypot(s.x - MOON.x, s.y - MOON.y) > 10);
 
 function disc(p: P, cx: number, cy: number, r: number, key: MarinaKey) {
   for (let y = cy - r; y <= cy + r; y++) {
@@ -387,18 +386,9 @@ export function drawMid(pal: Pal, time: TimeOfDay) {
   return p.toCanvas();
 }
 
-/** The Monterey cypress overhanging the top left, and tall grass along the front edge. */
+/** Tall grass along the front edge. */
 export function drawFg(pal: Pal) {
   const p = new Painter<MarinaKey>(W, H, pal);
-  branch(p, [[12, 168], [14, 126], [18, 90], [24, 56]], 7, 4);
-  branch(p, [[18, 88], [36, 66], [60, 48]], 4, 2);
-  branch(p, [[24, 56], [44, 34], [68, 18]], 3.5, 1.5);
-  branch(p, [[20, 74], [8, 58], [0, 54]], 3, 2);
-  branch(p, [[24, 56], [22, 30], [16, 14]], 3, 1.5);
-  const crown: [number, number, number][] = [
-    [-6, 6, 14], [16, 4, 12], [40, 14, 11], [66, 10, 9], [4, 30, 10], [26, 30, 9], [-2, 52, 9], [60, 42, 9], [46, 34, 7],
-  ];
-  crown.forEach(([x, y, r], i) => blob(p, x, y, r, 900 + i, -0.15));
   reeds(p, 170, 182, 2, 0.35);
   return p.toCanvas();
 }

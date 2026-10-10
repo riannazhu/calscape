@@ -37,7 +37,7 @@ export interface ElementDef {
   bar: { x: number; y: number; place: BarPlacement };
 }
 
-export const VOLUME_STEPS = 6;
+export const VOLUME_STEPS = 8;
 export const DEFAULT_VOLUME = 4 / VOLUME_STEPS;
 export const MASTER_STEPS = 8;
 export const DEFAULT_MASTER = 0.7;

@@ -1,13 +1,36 @@
 import type { ElementId } from '../../elements';
 import type { Palette, TimeOfDay } from '../palette';
 import { hex } from '../pixels';
-import { drawDrifters, drawSprite, type Sprite } from '../sprites';
+import { drawDrifters, drawSprite, flipX, type Sprite } from '../sprites';
 import { Stage, W, alphaMask, type Part, type Placed } from '../stage';
 import { FISHERS, FISHER_COUNT, FLOAT, POST, STARS, deckY, drawFar, drawFg, drawMid, skyColor } from './backdrop';
 import { PALETTES, type MarinaKey } from './palette';
-import { BOATS, FOAM, FOAM_POS, FOG, FOG_POS, GEESE, GULL, HERON, SEALIONS, WISPS } from './sprites';
+import {
+  BOATS,
+  FERRY,
+  FERRY_POS,
+  FOAM,
+  FOAM_POS,
+  FOG,
+  FOG_POS,
+  GEESE,
+  GULL,
+  GULL_FLYING,
+  HERON,
+  SEALIONS,
+  WISPS,
+} from './sprites';
 
-const GULL_POS = { x: POST.x - 4, y: POST.top - GULL.idle.h };
+/** Gulls perched on the two tallest pilings, the second facing the other way. */
+const GULL_PERCHES = [
+  { x: POST.x - 4, y: POST.top - GULL.idle.h, flip: false },
+  { x: 133, y: 124 - GULL.idle.h, flip: true },
+];
+/** More gulls wheeling over the bay in slow ovals. */
+const GULL_FLIERS = [
+  { cx: 96, cy: 48, rx: 26, ry: 7, period: 26, phase: 0 },
+  { cx: 176, cy: 38, rx: 34, ry: 9, period: 34, phase: 2.5 },
+];
 const HERON_POS = { x: POST.x - 3, y: POST.top - HERON.idle.h };
 const SEALION_POS = { x: FLOAT.x0, y: FLOAT.y - SEALIONS.idle.h + 1 };
 const GEESE_POS = { x: 196, y: 158 };
@@ -55,9 +78,12 @@ export class Marina extends Stage<MarinaKey> {
       case 'waves':
         return [{ sprite: FOAM[0], ...FOAM_POS }];
       case 'foghorn':
-        return [{ sprite: FOG, ...FOG_POS }];
+        return [
+          { sprite: FOG, ...FOG_POS },
+          { sprite: FERRY.day, ...FERRY_POS },
+        ];
       case 'gull':
-        return [{ sprite: GULL.idle, ...GULL_POS }];
+        return this.gullParts(0, false, 0);
       case 'geese':
         return [{ sprite: GEESE.idle, ...GEESE_POS }];
       case 'heron':
@@ -89,10 +115,20 @@ export class Marina extends Stage<MarinaKey> {
           at(id, FOAM[Math.floor(t * 1.6) % FOAM.length], FOAM_POS);
           break;
         case 'foghorn':
-          at(id, FOG, FOG_POS, Math.round(Math.sin((t * 2 * Math.PI) / 90) * 4));
+          out.push({
+            id,
+            parts: [
+              { sprite: FOG, x: FOG_POS.x + Math.round(Math.sin((t * 2 * Math.PI) / 90) * 4), y: FOG_POS.y },
+              {
+                sprite: this.time === 'day' ? FERRY.day : FERRY.lit,
+                x: FERRY_POS.x + Math.round(Math.sin((t * 2 * Math.PI) / 150) * 6),
+                y: FERRY_POS.y,
+              },
+            ],
+          });
           break;
         case 'gull':
-          at(id, this.calling(id, now) && blip(200) ? GULL.call : GULL.idle, GULL_POS);
+          out.push({ id, parts: this.gullParts(t, this.calling(id, now) && !still, now) });
           break;
         case 'heron':
           at(id, this.calling(id, now) ? HERON.call : HERON.idle, HERON_POS);
@@ -106,6 +142,25 @@ export class Marina extends Stage<MarinaKey> {
       }
     }
     return out;
+  }
+
+  /** The perched gulls take turns calling while the flock is noisy; the fliers flap now and then. */
+  private gullParts(t: number, calling: boolean, now: number): Part<MarinaKey>[] {
+    const turn = Math.floor(now / 450) % 3;
+    const perched = GULL_PERCHES.map((g, i) => {
+      const s = calling && turn === i ? GULL.call : GULL.idle;
+      return { sprite: g.flip ? flipX(s) : s, x: g.x, y: g.y };
+    });
+    const flying = GULL_FLIERS.map((g, i) => {
+      const a = (t * 2 * Math.PI) / g.period + g.phase;
+      const flap = t > 0 && Math.floor(t * 4 + i * 3) % 5 < 2;
+      return {
+        sprite: GULL_FLYING[flap ? 0 : 1],
+        x: Math.round(g.cx + Math.cos(a) * g.rx),
+        y: Math.round(g.cy + Math.sin(a) * g.ry),
+      };
+    });
+    return [...perched, ...flying];
   }
 
   private updateAmbient(now: number) {
@@ -141,7 +196,11 @@ export class Marina extends Stage<MarinaKey> {
     }
     if (this.time !== 'night') {
       drawDrifters(ctx, WISPS, t, pal, W, this.time === 'sunset' ? 3 : 1);
-      drawDrifters(ctx, BOATS, t, pal, W);
+      BOATS.forEach((b, i) => {
+        const x = b.x + Math.round(Math.sin((t * 2 * Math.PI) / b.period + i * 2) * b.sway);
+        const bob = Math.sin(t * 1.1 + i * 1.7) > 0.5 ? 1 : 0;
+        drawSprite(ctx, b.sprite, x, b.y + bob, pal);
+      });
     }
     for (const id of ['foghorn', 'waves'] as const) {
       const p = get(id);

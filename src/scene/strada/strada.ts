@@ -3,7 +3,7 @@ import type { Palette, TimeOfDay } from '../palette';
 import { hex, mulberry32 } from '../pixels';
 import { drawDrifters, drawSprite, flipX, type Sprite } from '../sprites';
 import { H, Stage, W, alphaMask, type Part, type Placed } from '../stage';
-import { LAMP, PATH, STARS, TREE_WELL, drawFar, drawFg, drawGlow, drawMid, skyColor } from './backdrop';
+import { LAMP, PATH, STARS, drawFar, drawFg, drawGlow, drawMid, skyColor } from './backdrop';
 import { PALETTES, type StradaKey } from './palette';
 import {
   BIKERS,
@@ -13,22 +13,26 @@ import {
   CROW,
   RAIN_CLOUDS,
   SPARROW,
-  TYPING,
-  TYPING_POS,
+  TYPISTS,
   WISPS,
 } from './sprites';
 
-/** The sparrow hops along the front railing's top rail. */
-const SPARROW_SPOTS = [224, 290, 306];
-const SPARROW_Y = 132 - SPARROW.idle.h;
-/** The crow keeps watch from the top of the bannered street lamp. */
-const CROW_POS = { x: LAMP.x - 3, y: LAMP.head - 4 - CROW.idle.h };
-/** A cricket sings from the rim of the big plum's tree well. */
-const CRICKET_POS = { x: TREE_WELL.x0 + 4, y: TREE_WELL.top - 3 };
+/** A few sparrows hop between spots along the front railing's top rail, never two on one spot. */
+const SPARROW_SPOTS = [228, 244, 262, 278, 292];
+const SPARROW_Y = 150 - SPARROW.idle.h;
+/** One crow keeps watch from the top of the bannered street lamp, another from the big plum's long limb. */
+const CROW_PERCHES = [
+  { x: LAMP.x - 3, y: LAMP.head - 4 - CROW.idle.h, flip: false },
+  { x: 238, y: 50 - CROW.idle.h, flip: true },
+];
+/** A cricket sings from the bottom rail of the middle balustrade. */
+const CRICKET_POS = { x: 100, y: 137 };
 const BIKE_SPEED = 16;
 
 /** Elements behind the hedge, railings, trees or canopy are hidden where those overlap. */
 const OCCLUDED = new Set<ElementId>(['rain']);
+/** People sit behind the front railings and under the canopy, which hide them where they overlap. */
+const BEHIND_FG = new Set<ElementId>(['chatter', 'typing'] satisfies ElementId[]);
 
 interface Layers {
   far: HTMLCanvasElement;
@@ -51,8 +55,11 @@ export class Strada extends Stage<StradaKey> {
   private layers = new Map<string, Layers>();
   private midMask: Uint8Array;
   private fgMask: Uint8Array;
-  private sparrowSpot = 0;
-  private sparrowFacing = 0;
+  private sparrows = [
+    { spot: 0, facing: 0 },
+    { spot: 2, facing: 1 },
+    { spot: 4, facing: 0 },
+  ];
   private nextSparrowHop = 0;
   private nextChat = 0;
   private chat: keyof typeof CHATTER = 'idle';
@@ -104,11 +111,11 @@ export class Strada extends Stage<StradaKey> {
       case 'chatter':
         return [{ sprite: CHATTER.idle, ...CHATTER_POS }];
       case 'typing':
-        return [{ sprite: TYPING[0], ...TYPING_POS }];
+        return TYPISTS.map((p) => ({ sprite: p.frames[0], ...p.pos }));
       case 'sparrow':
-        return [{ sprite: SPARROW.idle, x: SPARROW_SPOTS[this.sparrowSpot], y: SPARROW_Y }];
+        return this.sparrows.map((b) => ({ sprite: SPARROW.idle, x: SPARROW_SPOTS[b.spot], y: SPARROW_Y }));
       case 'crow':
-        return [{ sprite: CROW.idle, ...CROW_POS }];
+        return CROW_PERCHES.map((c) => ({ sprite: c.flip ? flipX(CROW.idle) : CROW.idle, x: c.x, y: c.y }));
       case 'crickets':
         return [{ sprite: CRICKET[0], ...CRICKET_POS }];
       default:
@@ -118,8 +125,9 @@ export class Strada extends Stage<StradaKey> {
 
   protected occluded(id: ElementId, x: number, y: number) {
     if (super.occluded(id, x, y)) return true;
-    if (!OCCLUDED.has(id)) return false;
     const i = y * W + x;
+    if (BEHIND_FG.has(id)) return this.fgMask[i] === 1;
+    if (!OCCLUDED.has(id)) return false;
     return this.midMask[i] === 1 || this.fgMask[i] === 1;
   }
 
@@ -148,16 +156,36 @@ export class Strada extends Stage<StradaKey> {
           at(id, CHATTER[still ? 'idle' : this.chat], CHATTER_POS.x, CHATTER_POS.y);
           break;
         case 'typing':
-          at(id, TYPING[blip(130) && t % 9 < 6 ? 1 : 0], TYPING_POS.x, TYPING_POS.y);
+          out.push({
+            id,
+            parts: TYPISTS.map((p, i) => ({
+              sprite: p.frames[!still && Math.floor(now / (120 + i * 35)) % 2 === 0 && (t + i * 4) % 9 < 6 ? 1 : 0],
+              ...p.pos,
+            })),
+          });
           break;
         case 'sparrow': {
-          const s = this.calling(id, now) && blip(120) ? SPARROW.chirp : SPARROW.idle;
-          at(id, this.sparrowFacing ? flipX(s) : s, SPARROW_SPOTS[this.sparrowSpot], SPARROW_Y);
+          const turn = Math.floor(now / 400) % this.sparrows.length;
+          out.push({
+            id,
+            parts: this.sparrows.map((b, i) => {
+              const s = this.calling(id, now) && turn === i && blip(120) ? SPARROW.chirp : SPARROW.idle;
+              return { sprite: b.facing ? flipX(s) : s, x: SPARROW_SPOTS[b.spot], y: SPARROW_Y };
+            }),
+          });
           break;
         }
-        case 'crow':
-          at(id, this.calling(id, now) && blip(260) ? CROW.caw : CROW.idle, CROW_POS.x, CROW_POS.y);
+        case 'crow': {
+          const turn = Math.floor(now / 900) % CROW_PERCHES.length;
+          out.push({
+            id,
+            parts: CROW_PERCHES.map((c, i) => {
+              const s = this.calling(id, now) && turn === i && blip(260) ? CROW.caw : CROW.idle;
+              return { sprite: c.flip ? flipX(s) : s, x: c.x, y: c.y };
+            }),
+          });
           break;
+        }
         case 'crickets':
           at(id, CRICKET[!still && t % 2.4 < 0.35 && blip(90) ? 1 : 0], CRICKET_POS.x, CRICKET_POS.y);
           break;
@@ -172,10 +200,12 @@ export class Strada extends Stage<StradaKey> {
     if (this.reducedMotion) return;
     if (this.present.sparrow && now > this.nextSparrowHop) {
       if (this.nextSparrowHop > 0) {
-        if (this.rng() < 0.5) this.sparrowFacing = 1 - this.sparrowFacing;
-        else this.sparrowSpot = Math.floor(this.rng() * SPARROW_SPOTS.length);
+        const b = this.sparrows[Math.floor(this.rng() * this.sparrows.length)];
+        const free = SPARROW_SPOTS.map((_, i) => i).filter((i) => !this.sparrows.some((o) => o.spot === i));
+        if (this.rng() < 0.5) b.facing = 1 - b.facing;
+        else b.spot = free[Math.floor(this.rng() * free.length)];
       }
-      this.nextSparrowHop = now + 6000 + this.rng() * 12000;
+      this.nextSparrowHop = now + 3000 + this.rng() * 7000;
     }
     if (now > this.nextChat) {
       const r = this.rng();

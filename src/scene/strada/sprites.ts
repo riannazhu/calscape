@@ -1,247 +1,55 @@
-import { blank, cricket, flipX, fromRows, rainCloud, wisp, type Drifter, type Sprite } from '../sprites';
+import { cricket, fromRows, rainCloud, wisp, type Drifter, type Sprite } from '../sprites';
 import type { StradaKey } from './palette';
+import { LOOKS, cup, facing, laptop, seated, sprite, type Pose } from './people';
 
 type S = Sprite<StradaKey>;
 type Legend = Record<string, StradaKey>;
 
-/** Stamps sprites at offsets into one new sprite of the given size. */
-function compose(w: number, h: number, parts: [S, number, number][]): S {
-  const { sprite, set } = blank<StradaKey>(w, h);
-  for (const [s, ox, oy] of parts) {
-    for (let y = 0; y < s.h; y++) {
-      for (let x = 0; x < s.w; x++) {
-        const k = s.px[y * s.w + x];
-        if (k) set(ox + x, oy + y, k);
-      }
-    }
-  }
-  return sprite;
-}
+/** The one table whose friends talk over coffee: the chatter element. They sit behind the front-right railing. */
+export const CHATTER_TABLE = { cx: 258, rx: 15, top: 121, floor: 150 };
+export const CHATTER_POS = { x: 222, y: 92 };
+/** The two friends side on: their backs, heights and which way they face. */
+export const CHATTER_SEATS = [
+  { x: 230, h: 48, dir: 1 as const },
+  { x: 288, h: 50, dir: -1 as const },
+];
 
-export interface Look {
-  hair: StradaKey;
-  skin: StradaKey;
-  skinShade: StradaKey;
-  top: StradaKey;
-  topShade: StradaKey;
-}
-
-/**
- * Rows use H hair, h hair shine, S skin, s skin shade, E eye, T top, t top
- * shade, P trousers, p trouser shade, D shoe, C cup.
- */
-function figure(rows: string[], look: Look, facingLeft = false): S {
-  const s = fromRows(rows, {
-    H: look.hair,
-    h: 'hairShine',
-    S: look.skin,
-    s: look.skinShade,
-    E: 'eye',
-    T: look.top,
-    t: look.topShade,
-    P: 'pants',
-    p: 'pantsDark',
-    D: 'shoe',
-    C: 'cup',
+function chatter(pose: { a?: Pose; b?: Pose; c?: Pose }): S {
+  const t = CHATTER_TABLE;
+  const [a, b] = CHATTER_SEATS;
+  return sprite(CHATTER_POS.x, CHATTER_POS.y, 76, 60, (br) => {
+    facing(br, t.cx, t.top, 46, LOOKS.yellow, pose.c);
+    cup(br, 249, t.top);
+    if (pose.b !== 'sip') cup(br, 267, t.top);
+    seated(br, a.x, t.floor, a.h, LOOKS.blue, a.dir, pose.a, t.top);
+    seated(br, b.x, t.floor, b.h, LOOKS.grey, b.dir, pose.b, t.top);
   });
-  return facingLeft ? flipX(s) : s;
-}
-
-export const LOOKS = {
-  red: { hair: 'hairDark', skin: 'skin3', skinShade: 'skin4', top: 'shirtRed', topShade: 'shirtRedDark' },
-  blue: { hair: 'hairGold', skin: 'skin1', skinShade: 'skin2', top: 'shirtBlue', topShade: 'shirtBlueDark' },
-  yellow: { hair: 'hairBrown', skin: 'skin2', skinShade: 'skin3', top: 'shirtYellow', topShade: 'shirtYellowDark' },
-  green: { hair: 'hairBrown', skin: 'skin1', skinShade: 'skin2', top: 'shirtGreen', topShade: 'shirtGreenDark' },
-  white: { hair: 'hairDark', skin: 'skin2', skinShade: 'skin3', top: 'shirtWhite', topShade: 'shirtWhiteDark' },
-  navy: { hair: 'hairDark', skin: 'skin2', skinShade: 'skin3', top: 'shirtNavy', topShade: 'shirtNavyDark' },
-} satisfies Record<string, Look>;
-
-export const CUP = fromRows(['CCC.', 'CCCC', 'CCC.'], { C: 'cup' } as Legend);
-
-/** A seated patron at a far table, facing right; hands at row 8, seat at row 10. */
-const SMALL = [
-  '..HHH....',
-  '.HHHSS...',
-  '.HHSES...',
-  '.HHSSS...',
-  '..HSs....',
-  '..TTTT...',
-  '.TTTTTT..',
-  '.tTTTTT..',
-  '.tTTTTTSS',
-  '.tTTTT...',
-  '.PPPPPPP.',
-  '......P..',
-  '......P..',
-  '.....DD..',
-];
-
-export const smallPatron = (look: Look, facingLeft = false) => figure(SMALL, look, facingLeft);
-
-/** Writes `text` into a copy of `rows`, starting at the given row and column. */
-const paint = (rows: string[], edits: [row: number, col: number, text: string][]) =>
-  rows.map((r, i) => edits.filter(([row]) => row === i).reduce((s, [, col, t]) => s.slice(0, col) + t + s.slice(col + t.length), r));
-
-/**
- * Someone at a near table facing right, with long hair down the back:
- * forearms out to the tabletop at row 20, seated at row 26.
- */
-const LONG = [
-  '......HHHHH.........',
-  '....HHHHHHHHH.......',
-  '...HHHHHHHHHHH......',
-  '...HHHhHHHHSSH......',
-  '..HHHHhHHHSSSS......',
-  '..HHHhHHHHSSSSS.....',
-  '..HHHhHHHSSSESS.....',
-  '..HHHHHHHSSSSSS.....',
-  '..HHHHHHHSSSSSs.....',
-  '..HHHhHHHHSSSs......',
-  '..HHHHHHHHsSS.......',
-  '..HHHHHHHHHSs.......',
-  '..HHHHHHHHTTT.......',
-  '..HHHHHHHTTTTT......',
-  '..HHHHHHTTTTTTT.....',
-  '..HHHHHTTTTTTTT.....',
-  '...HHtTTTTTTTTT.....',
-  '...tttTTTTTTTTT.....',
-  '...ttTTTTTTtTTT.....',
-  '...ttTTTTTTtTTTTT...',
-  '...ttTTTTTTTtTTTTSS.',
-  '...ttTTTTTTTT.......',
-  '...ttTTTTTTTT.......',
-  '...PPPPPPPPPPPPPP...',
-  '...pPPPPPPPPPPPPPP..',
-  '...ppPPPPPPPPPPPPP..',
-  '..............PPPp..',
-  '..............PPPp..',
-  '..............PPPp..',
-  '..............PPPp..',
-  '..............PPPp..',
-  '.............DDDDDD.',
-];
-const SEAT = 26;
-
-/** The same with short hair and a bare neck. */
-const SHORT = [
-  '.....HHHHHH.........',
-  '....HHHHHHHHH.......',
-  '...HHHHHHHHHHH......',
-  '...HHHhHHHHHSH......',
-  '...HHHhHHHSSSS......',
-  '...HHHHHHSSSSSS.....',
-  '...HHHHHSSSESSS.....',
-  '...HHHHSSSSSSSS.....',
-  '....HHHSSSSSSSs.....',
-  '.....HSSSSSSSs......',
-  '......sSSSSSs.......',
-  '.......SSSSs........',
-  '........SSs.........',
-  '......TTTTTTT.......',
-  '.....TTTTTTTTT......',
-  '....tTTTTTTTTT......',
-  ...LONG.slice(16),
-].map((r, i) => (i === 16 ? '...ttTTTTTTTTTT.....' : r));
-
-/** Mid-sentence: the near hand lifts off the table. */
-const SHORT_TALK = paint(SHORT, [
-  [15, 14, 'SS'],
-  [16, 14, 'TS'],
-  [17, 14, 'T.'],
-  [19, 15, '..'],
-  [20, 16, '...'],
-]);
-
-/** Lifting a cup to sip: the near arm folds up to the face. */
-const LONG_SIP = paint(LONG, [
-  [8, 15, 'CCC'],
-  [9, 14, 'SCCCC'],
-  [10, 13, 'SSCCC'],
-  [11, 13, 'SS'],
-  [12, 13, 'S'],
-  [19, 15, '..'],
-  [20, 16, '...'],
-]);
-
-/** Facing out from behind the table: head, shoulders and hands on the tabletop at row 20. */
-const FACING = [
-  '.......HHHHHH.......',
-  '.....HHHHHHHHHH.....',
-  '....HHHHHHHHHHHH....',
-  '....HHHhHHHHHHHH....',
-  '....HHSSSSSSSSHH....',
-  '....HSSSSSSSSSSH....',
-  '....HSSESSSSESSH....',
-  '....HSSSSSSSSSSH....',
-  '.....SSSSssSSSS.....',
-  '.....SSSSSSSSSS.....',
-  '......SSSSSSSS......',
-  '.......sSSSSs.......',
-  '........SSSS........',
-  '.....TTTTTTTTTT.....',
-  '...TTTTTTTTTTTTTT...',
-  '..TTTTTTTTTTTTTTTT..',
-  '..TTtTTTTTTTTTTtTT..',
-  '..TTtTTTTTTTTTTtTT..',
-  '..TTtTTTTTTTTTTtTT..',
-  '..TTtTTTTTTTTTTtTT..',
-  '..SSSTTTTTTTTTTSSS..',
-];
-const FACING_NOD = ['.', ...FACING.slice(0, 11), ...FACING.slice(12)];
-
-export const friend = (look: Look, facingLeft = false) => figure(SHORT, look, facingLeft);
-export const friendLongHair = (look: Look, facingLeft = false) => figure(LONG, look, facingLeft);
-/** Row at which a seated friend's forearms rest on the tabletop. */
-export const HANDS = 20;
-
-/** The centre table where three friends talk over coffee; the table and chairs are scenery. */
-export const CHATTER_TABLE = { cx: 128, rx: 20, floor: 150 };
-export const CHATTER_POS = { x: CHATTER_TABLE.cx - 36, y: CHATTER_TABLE.floor - LONG.length };
-export const CHATTER_SEAT = SEAT;
-const CUP_Y = HANDS - 2;
-
-function chatter(a: string[], b: string[], c: string[], bCup: boolean): S {
-  const parts: [S, number, number][] = [
-    [figure(c, LOOKS.yellow), 26, 0],
-    [figure(a, LOOKS.red), 0, 0],
-    [figure(b, LOOKS.blue, true), 55, 0],
-    [CUP, 21, CUP_Y],
-  ];
-  if (bCup) parts.push([CUP, 48, CUP_Y]);
-  return compose(75, LONG.length, parts);
 }
 
 export const CHATTER = {
-  idle: chatter(SHORT, LONG, FACING, true),
-  talk: chatter(SHORT_TALK, LONG, FACING, true),
-  sip: chatter(SHORT, LONG_SIP, FACING, false),
-  nod: chatter(SHORT, LONG, FACING_NOD, true),
+  idle: chatter({}),
+  talk: chatter({ a: 'talk' }),
+  sip: chatter({ b: 'sip' }),
+  nod: chatter({ c: 'nod', a: 'talk' }),
 };
 
-/** A student on a laptop at the front table: long dark hair and a navy hoodie. The second frame moves the hands. */
-const STUDENT_TYPING = paint(LONG, [
-  [19, 17, 'S'],
-  [20, 17, '.SS'],
-]);
-
-/** An open laptop side on, its screen turned toward the student on the left. */
-const LAPTOP_SIDE = fromRows(
-  ['............LL', '...........MLL', '...........ML.', '..........ML..', '..........ML..', '.........ML...', '.........ML...', 'LLLLLLLLLLL...'],
-  { L: 'laptop', M: 'screen' } as Legend,
-);
-
-export const TYPING_TABLE = { cx: 30, rx: 13, floor: 160 };
-export const TYPING_POS = { x: 6, y: TYPING_TABLE.floor - LONG.length };
-export const TYPING_SEAT = SEAT;
-
-const typing = (rows: string[]) =>
-  compose(34, LONG.length, [
-    [LAPTOP_SIDE, 14, 13],
-    [figure(rows, LOOKS.navy), 0, 0],
-    [CUP, 29, 18],
-  ]);
-
-export const TYPING = [typing(LONG), typing(STUDENT_TYPING)];
+/**
+ * People working on laptops: the typing element. Each has a table in front
+ * of them; `frames` alternate the hands between keys.
+ */
+export const TYPISTS = [
+  { x: 66, floor: 156, h: 54, dir: -1 as const, look: LOOKS.navy, table: { cx: 40, rx: 16, top: 126 }, laptop: 53, cupX: 29, box: [22, 96, 52, 62] },
+  { x: 134, floor: 152, h: 50, dir: 1 as const, look: LOOKS.hoodie, table: { cx: 166, rx: 14, top: 125 }, laptop: 150, cupX: 174, box: [126, 96, 56, 58] },
+].map((t) => {
+  const [x0, y0, w, h] = t.box;
+  const frame = (pose: Pose) =>
+    sprite(x0, y0, w, h, (b) => {
+      laptop(b, t.laptop, t.table.top, t.dir, t.h / 50);
+      cup(b, t.cupX, t.table.top, t.h / 50);
+      seated(b, t.x, t.floor, t.h, t.look, t.dir, pose, t.table.top);
+    });
+  return { ...t, pos: { x: x0, y: y0 }, frames: [frame('type'), frame('type2')] };
+});
 
 /** A house sparrow facing left: grey crown, chestnut nape, black bib, pale cheek. */
 const SPARROW_LEGEND: Legend = { C: 'sparrowCap', B: 'sparrow', D: 'sparrowDark', L: 'sparrowLight', E: 'eye', K: 'beak' };

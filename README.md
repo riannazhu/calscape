@@ -34,14 +34,17 @@ time of day's own cloud colours and hides the sun, moon and stars.
 
 ## Caffè Strada
 
-The patio of Caffè Strada at College and Bancroft, under flowering plum trees
-and string lights, with Cal banners on the street lamps and campus across
-Bancroft Way. An AC Transit bus pulls in to the stop every few minutes and
-cyclists ride past now and then; they are only scenery and make no sound.
+The brick patio of Caffè Strada at College and Bancroft, under a full canopy
+of plum trees and string lights: the café's lit arched loggia, two patio
+heaters, white balustrades, and a street lamp with a Cal banner, with a campus
+hall and trees beyond. Nearly every table is taken: two students work on
+laptops, others sit over coffee at the back, and three friends talk at the
+table on the right. Cyclists ride along the path past the railing now and then; they
+are only scenery and make no sound.
 
 | Day | Sunset | Night |
 | --- | --- | --- |
-| ![Day: students at the patio tables, a house sparrow on the front railing](docs/screenshots/strada-day.png) | ![Sunset: pink sky, string lights on, a crow on the bannered lamp](docs/screenshots/strada-sunset.png) | ![Night: glowing lamps and string lights, lit windows across Bancroft, a cricket in the planter](docs/screenshots/strada-night.png) |
+| ![Day: friends talking at the right-hand table, two students on laptops, sparrows on the front railing](docs/screenshots/strada-day.png) | ![Sunset: pink sky, string lights on, a crow on the bannered lamp](docs/screenshots/strada-sunset.png) | ![Night: the lamp, heaters and string lights glowing, a cricket by the big plum's tree well](docs/screenshots/strada-night.png) |
 
 | Time | Elements |
 | --- | --- |
@@ -50,18 +53,22 @@ cyclists ride past now and then; they are only scenery and make no sound.
 | Night | Rain, café chatter, crickets, laptop typing |
 
 The chatter is a real café recording, so the clink of cups and spoons is part
-of it rather than a separate element. At sunset the crow stands in for
-Berkeley's evening crow flights; at night crickets chirp in the patio planter.
+of it rather than a separate element. The typing is several keyboards at once,
+kept well below the chatter. By day three sparrows hop along the front
+railing; at sunset two crows, one on the lamp and one in the big plum, stand in
+for Berkeley's evening crow flights; at night a cricket chirps by the big plum's
+tree well.
 
 ## Berkeley Marina
 
 The grassy shore beside the Berkeley Marina pier, looking west
 across the bay to San Francisco and the Golden Gate Bridge. People fish from
-the pier, sailboats drift by, and sea lions haul out on a float.
+the pier, sailboats sway at anchor on the swell, and sea lions haul out on a
+float.
 
 | Day | Sunset | Night |
 | --- | --- | --- |
-| ![Day: blue bay, sailboats, a western gull on the piling, sea lions on the float](docs/screenshots/marina-day.png) | ![Sunset: the sun setting between the Golden Gate towers, Canada geese on the grass](docs/screenshots/marina-sunset.png) | ![Night: moonlit water, bridge lights, a night heron on the piling](docs/screenshots/marina-night.png) |
+| ![Day: blue bay, sailboats, western gulls on the pilings and overhead, sea lions on the float](docs/screenshots/marina-day.png) | ![Sunset: the sun setting between the Golden Gate towers, Canada geese on the grass](docs/screenshots/marina-sunset.png) | ![Night: moonlit water, bridge lights, a night heron on the piling](docs/screenshots/marina-night.png) |
 
 | Time | Elements |
 | --- | --- |
@@ -69,9 +76,15 @@ the pier, sailboats drift by, and sea lions haul out on a float.
 | Sunset | Waves, foghorn, Canada geese, sea lions |
 | Night | Waves, foghorn, black-crowned night heron, sea lions |
 
-The waves are the foam lapping along the rocks; the foghorn is the fog bank
-over the Marin Headlands, sounding every 25 to 50 seconds. The people fishing
-are scenery only.
+The waves are surf breaking along the rocks. The foghorn is a ferry heading
+out past the low fog bank under the Marin Headlands, sounding every one to two
+minutes. The people fishing are scenery only.
+
+The sea lions bark in runs, the way the Pier 39 colony does.
+
+Animals that live in groups are heard as groups: the gulls, geese, sea lions,
+sparrows and crows each call in bursts from several individuals, each with its
+own pitch, loudness and place in the stereo field, sometimes overlapping.
 
 ## Running
 
@@ -151,12 +164,12 @@ have no synthesised stand-in and stay silent if their file fails to load.
 | `typing.mp3` | [Laptop keyboard](https://commons.wikimedia.org/wiki/File:Laptop_keyboard.ogg) | russiandoll | Public domain |
 | `sparrow.mp3` | [House Sparrow, xeno-canto XC543237](https://commons.wikimedia.org/wiki/File:Passer_domesticus_-_House_Sparrow_XC543237.mp3) | Benoît Van Hecke | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
 | `crow.mp3` | [American Crow, xeno-canto XC115429](https://commons.wikimedia.org/wiki/File:Corvus_brachyrhynchos_-_American_Crow_XC115429.mp3) | Jonathon Jongsma | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) |
-| `waves.mp3` | [Water on Rocks](https://commons.wikimedia.org/wiki/File:Water_on_Rocks.ogg) | Dsw4 | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) |
+| `waves.mp3` | [Nauset Beach](https://commons.wikimedia.org/wiki/File:NausetBeach.ogg) | Groov3 | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
 | `foghorn.mp3` | [Original foghorn at East Brother Island Lighthouse](https://commons.wikimedia.org/wiki/File:Original_foghorn_at_East_Brother_Island_Lighthouse.ogg) | Elwood P. Dowd | [CC0](https://creativecommons.org/publicdomain/zero/1.0/) |
 | `gull.mp3` | [Western Gull, Golden Gate National Recreation Area](https://commons.wikimedia.org/wiki/File:Western_Gull_Golden_Gate_National_Recreation_Area.ogg) | National Park Service | Public domain |
 | `geese.mp3` | [Geese Honking (distant)](https://commons.wikimedia.org/wiki/File:Geese_Honking_(distant).ogg) | U.S. Fish and Wildlife Service | Public domain |
 | `heron.mp3` | [Black-crowned Night Heron, xeno-canto XC481741](https://commons.wikimedia.org/wiki/File:Nycticorax_nycticorax_-_Black-crowned_Night_Heron_XC481741.mp3) | Jens Loose | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
-| `sealions.mp3` | [Sea lions at Pier 39 (video)](https://commons.wikimedia.org/wiki/File:Sea_lions_at_Pier_39_video.webm) | Mike Peel | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
+| `sealions.mp3` | [California Sea Lion at Noyo Harbor](https://commons.wikimedia.org/wiki/File:California_Sea_Lion_at_Noyo_Harbor_-_October_2022_-_Sarah_Stierch.webm) | Sarah Stierch | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 
 Clips adapted from CC BY and CC BY-SA sources are shared under the same
 licenses as their sources.
