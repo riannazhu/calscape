@@ -120,10 +120,12 @@ function conifer(p: P, cx: number, baseY: number, height: number, halfW: number)
   }
 }
 
-const LIT_SHARE: Record<TimeOfDay, number> = { day: 0.12, sunset: 0.3, night: 0.65 };
+/** Share of windows lit: Doe fills up after dark, the smaller buildings to its left much less. */
+const LIT_SHARE: Record<TimeOfDay, number> = { day: 0.12, sunset: 0.3, night: 0.45 };
+const DOE_LIT_SHARE: Record<TimeOfDay, number> = { day: 0.12, sunset: 0.3, night: 0.9 };
 
-function lit(seed: number, time: TimeOfDay) {
-  return hash(seed, 3, 77) < LIT_SHARE[time];
+function lit(seed: number, time: TimeOfDay, share = LIT_SHARE) {
+  return hash(seed, 3, 77) < share[time];
 }
 
 /** A small window: warm when lit, dusky glass when not. */
@@ -267,13 +269,13 @@ function doe(p: P, time: TimeOfDay) {
     const b0 = COLUMNS[i - 1] + 2;
     const b1 = COLUMNS[i] - 1;
     if (b1 - b0 < 5 || b0 >= 214 && b1 <= 233) continue;
-    arched(b0 + 2, b1 - 2, 90, 112, lit(b0, time));
+    arched(b0 + 2, b1 - 2, 90, 112, lit(b0, time, DOE_LIT_SHARE));
     const mid = Math.floor((b0 + b1) / 2);
-    pane(p, mid - 1, 122, 3, 4, lit(b0 + 1, time));
+    pane(p, mid - 1, 122, 3, 4, lit(b0 + 1, time, DOE_LIT_SHARE));
   }
   for (const x0 of [135, mirror(140)]) {
-    arched(x0, x0 + 5, 91, 112, lit(x0, time));
-    pane(p, x0 + 1, 122, 4, 4, lit(x0 + 2, time));
+    arched(x0, x0 + 5, 91, 112, lit(x0, time, DOE_LIT_SHARE));
+    pane(p, x0 + 1, 122, 4, 4, lit(x0 + 2, time, DOE_LIT_SHARE));
   }
 
   // Central bay: window between two small columns, then the entrance portal.

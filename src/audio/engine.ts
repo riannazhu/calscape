@@ -28,29 +28,29 @@ const LOOP_FADE_IN_S = 0.8;
  * and breeze sit low as beds, and the animals call over them now and then.
  */
 const BASE_LEVEL: Record<ElementId, number> = {
-  rain: 0.6,
-  bird: 0.28,
-  bell: 0.6,
-  squirrel: 0.24,
+  rain: 0.3,
+  bird: 0.14,
+  bell: 0.795,
+  squirrel: 0.12,
   dove: 0.32,
-  wind: 0.36,
+  wind: 0.477,
   crickets: 0.14,
   owl: 0.32,
   chatter: 0.48,
-  typing: 0.12,
+  typing: 0.37,
   sparrow: 0.2,
   crow: 0.24,
   waves: 0.6,
   foghorn: 0.39,
   gull: 0.36,
-  geese: 0.4,
+  geese: 0.55,
   heron: 0.8,
-  sealions: 0.75,
+  sealions: 0.45,
 };
 /** Each sound comes from roughly where its sprite sits. */
 const PAN: Record<ElementId, number> = {
   rain: 0,
-  bird: -0.55,
+  bird: 0,
   bell: -0.35,
   squirrel: -0.45,
   dove: -0.55,
@@ -70,7 +70,7 @@ const PAN: Record<ElementId, number> = {
 };
 const REVERB_SEND: Record<ElementId, number> = {
   rain: 0,
-  bird: 0.12,
+  bird: 0.3,
   bell: 0.25,
   squirrel: 0.06,
   dove: 0.12,
@@ -91,12 +91,12 @@ const REVERB_SEND: Record<ElementId, number> = {
 /** Elements that play a steady loop rather than scheduled events. */
 const LOOPED = new Set<ElementId>(['rain', 'crickets', 'wind', 'chatter', 'typing', 'waves']);
 /** Loops that play a recording; they stay silent if it can't load. */
-const RECORDED_LOOPS = new Set<ElementId>(['chatter', 'typing', 'waves']);
+const RECORDED_LOOPS = new Set<ElementId>(['chatter', 'waves']);
 /** Callers with a synthesised stand-in for when their recording can't load. */
 const SYNTH_CALLS = new Set<ElementId>(['bird', 'squirrel', 'dove', 'owl']);
 /** Animals that call now and then: seconds between calls, shortest to longest. */
 const CALL_GAP_S: Partial<Record<ElementId, [number, number]>> = {
-  bird: [8, 22],
+  bird: [20, 40],
   squirrel: [20, 50],
   dove: [25, 60],
   owl: [30, 75],
@@ -127,16 +127,48 @@ const FLOCKS: Partial<Record<ElementId, Flock>> = {
   crow: { voices: 3, spread: 0.6, calls: [1, 3], gap: [1, 3] },
 };
 /**
- * Loops heard as several sources at once, each a copy of the recording
- * offset in time, pitch and stereo position so they never line up.
+ * One of the Glade's songbirds: where it sits, how high it sings, which song,
+ * how loud, and how far off (the highest frequency that reaches you).
  */
-const LOOP_LAYERS: Partial<Record<ElementId, Voice[]>> = {
-  typing: [
-    { pan: -0.45, rate: 1, level: 1 },
-    { pan: 0.1, rate: 0.93, level: 0.7 },
-    { pan: 0.4, rate: 1.07, level: 0.5 },
-  ],
-};
+interface Songbird {
+  pan: number;
+  pitch: number;
+  song: 'whistle' | 'trill' | 'warble';
+  level: number;
+  muffle: number;
+}
+/** The first is the perched bird; the rest sing from the trees around the Glade. */
+const SONGBIRDS: Songbird[] = [
+  { pan: -0.55, pitch: 3000, song: 'warble', level: 0.8, muffle: 9000 },
+  { pan: -0.85, pitch: 3700, song: 'trill', level: 0.45, muffle: 4500 },
+  { pan: 0.75, pitch: 2600, song: 'whistle', level: 0.5, muffle: 5000 },
+  { pan: 0.3, pitch: 3300, song: 'warble', level: 0.35, muffle: 3800 },
+  { pan: -0.25, pitch: 4100, song: 'trill', level: 0.3, muffle: 3500 },
+  { pan: 0.95, pitch: 2900, song: 'warble', level: 0.4, muffle: 4200 },
+];
+/**
+ * Someone typing: bursts of a few seconds cut from the recording, then a
+ * pause. `stop` is the chance a pause is a long one, to think or read.
+ */
+interface Typist extends Voice {
+  burst: [number, number];
+  stop: number;
+  /** Lowpass cutoff in Hz: further keyboards lose their click. */
+  muffle: number;
+}
+/**
+ * The man at the centre table, and keyboards at tables all around the patio,
+ * each its own pitch, distance and rhythm, so together they make a steady
+ * bed of typing rather than one person.
+ */
+const TYPISTS: Typist[] = [
+  { pan: -0.1, rate: 1, level: 1, burst: [1.2, 6], stop: 0.15, muffle: 16000 },
+  { pan: 0.55, rate: 0.93, level: 0.5, burst: [1.5, 5], stop: 0.25, muffle: 7000 },
+  { pan: -0.65, rate: 1.06, level: 0.45, burst: [1, 4.5], stop: 0.3, muffle: 6000 },
+  { pan: 0.25, rate: 0.97, level: 0.35, burst: [2, 7], stop: 0.2, muffle: 4500 },
+  { pan: -0.35, rate: 0.9, level: 0.3, burst: [1, 4], stop: 0.35, muffle: 3800 },
+  { pan: 0.85, rate: 1.1, level: 0.25, burst: [1.5, 5], stop: 0.3, muffle: 3200 },
+];
 /** One animal in a flock: where it sits, how high its voice is, how loud. */
 interface Voice {
   pan: number;
@@ -384,7 +416,7 @@ export class AudioEngine {
   /** Settles once a recording has loaded or failed. */
   private loading: Partial<Record<ElementId, Promise<void>>> = {};
   /** Lets the scene animate an animal while it calls. */
-  onCall: ((id: ElementId, ms: number) => void) | null = null;
+  onCall: ((id: ElementId, ms: number, voice?: number, delayMs?: number) => void) | null = null;
 
   /** Must be called from a user gesture before audio can play. */
   unlock() {
@@ -518,8 +550,11 @@ export class AudioEngine {
   }
 
   private loopSources(id: ElementId, ctx: AudioContext, dest: AudioNode, sources: SourceSet) {
+    if (id === 'chatter') this.clinks(ctx, dest, sources);
     if (RECORDED_LOOPS.has(id)) return this.recordedLoop(id, ctx, dest, sources);
     switch (id) {
+      case 'typing':
+        return this.typingSources(ctx, dest, sources);
       case 'crickets':
         return this.cricketSources(ctx, dest, sources);
       case 'wind':
@@ -571,8 +606,139 @@ export class AudioEngine {
     void this.whenLoaded(id).then(() => {
       const buffer = this.samples[id];
       if (!buffer || sources.stopped) return;
-      for (const voice of LOOP_LAYERS[id] ?? [{ pan: 0, rate: 1, level: 1 }]) start(buffer, voice);
+      start(buffer, { pan: 0, rate: 1, level: 1 });
     });
+  }
+
+  /**
+   * Typing as someone actually types: bursts cut from the recording, with
+   * short pauses between phrases and now and then a long one. The centre
+   * table's typist tells the scene when his hands are on the keys.
+   */
+  private typingSources(ctx: AudioContext, dest: AudioNode, sources: SourceSet) {
+    void this.whenLoaded('typing').then(() => {
+      const buffer = this.samples.typing;
+      if (!buffer || sources.stopped) return;
+      TYPISTS.forEach((t, i) => this.typingVoice(buffer, t, i === 0, ctx, dest, sources, i === 0 ? 0 : 0.3 + Math.random() * 5));
+    });
+  }
+
+  private typingVoice(
+    buffer: AudioBuffer,
+    t: Typist,
+    seen: boolean,
+    ctx: AudioContext,
+    dest: AudioNode,
+    sources: SourceSet,
+    delay: number,
+  ) {
+    const rand = (a: number, b: number) => a + Math.random() * (b - a);
+    const burst = () => {
+      if (sources.stopped) return;
+      const dur = rand(...t.burst);
+      const offset = LOOP_PAD_S + Math.random() * Math.max(0, buffer.duration - 2 * LOOP_PAD_S - dur);
+      const rate = t.rate * rand(0.97, 1.03);
+      const len = dur / rate;
+      const level = t.level * rand(0.7, 1.1);
+      const at = ctx.currentTime + 0.02;
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      src.playbackRate.value = rate;
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0, at);
+      env.gain.linearRampToValueAtTime(level, at + 0.03);
+      env.gain.setValueAtTime(level, at + len - 0.08);
+      env.gain.linearRampToValueAtTime(0, at + len);
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = t.muffle;
+      const pan = ctx.createStereoPanner();
+      pan.pan.value = t.pan;
+      src.connect(lp).connect(env).connect(pan).connect(dest);
+      src.addEventListener('ended', () => pan.disconnect());
+      src.start(at, offset, dur);
+      sources.add(src);
+      if (seen) this.onCall?.('typing', len * 1000);
+      const r = Math.random();
+      const pause = r < t.stop ? rand(6, 14) : r < 0.5 ? rand(1.5, 4) : rand(0.25, 1);
+      window.setTimeout(burst, (len + pause) * 1000);
+    };
+    window.setTimeout(burst, delay * 1000);
+  }
+
+  /**
+   * Cups and spoons around the café, over the chatter: a spoon tapping a cup
+   * rim, a quick stir, or a cup set down on its saucer, each a few ringing
+   * porcelain partials over a tiny strike, from somewhere across the patio.
+   */
+  private clinks(ctx: AudioContext, dest: AudioNode, sources: SourceSet) {
+    const rand = (a: number, b: number) => a + Math.random() * (b - a);
+    const ring = (out: AudioNode, at: number, f: number, partials: [number, number, number][], level: number) => {
+      for (const [ratio, amp, decay] of partials) {
+        const osc = ctx.createOscillator();
+        osc.frequency.value = f * ratio * rand(0.995, 1.005);
+        const env = ctx.createGain();
+        env.gain.setValueAtTime(0, at);
+        env.gain.linearRampToValueAtTime(level * amp, at + 0.002);
+        env.gain.setTargetAtTime(0, at + 0.002, decay);
+        osc.connect(env).connect(out);
+        osc.start(at);
+        osc.stop(at + 0.002 + decay * 6);
+        osc.addEventListener('ended', () => env.disconnect());
+        sources.add(osc);
+      }
+      const tick = ctx.createBufferSource();
+      tick.buffer = this.rain(ctx).hiss;
+      const hp = ctx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 4000;
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(level * 0.25, at);
+      env.gain.setTargetAtTime(0, at, 0.003);
+      tick.connect(hp).connect(env).connect(out);
+      tick.start(at, Math.random() * 8, 0.03);
+      sources.add(tick);
+    };
+    const RIM: [number, number, number][] = [
+      [1, 1, 0.22],
+      [2.32, 0.55, 0.11],
+      [4.1, 0.3, 0.06],
+      [6.3, 0.15, 0.035],
+    ];
+    const SAUCER: [number, number, number][] = [
+      [1, 1, 0.09],
+      [2.08, 0.5, 0.05],
+      [3.45, 0.25, 0.03],
+    ];
+    const event = () => {
+      if (sources.stopped) return;
+      // Mostly from tables further off: muffled and low, sunk into the murmur.
+      const near = Math.random() ** 2;
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 2200 + near * 3800;
+      const pan = ctx.createStereoPanner();
+      pan.pan.value = rand(-0.7, 0.8);
+      lp.connect(pan).connect(dest);
+      const level = 0.04 + near * 0.12;
+      const at = ctx.currentTime + 0.05;
+      const kind = Math.random();
+      let len = 1.5;
+      if (kind < 0.55) {
+        ring(lp, at, rand(2300, 3600), RIM, level);
+      } else if (kind < 0.7) {
+        const f = rand(2400, 3400);
+        const n = 2 + Math.floor(Math.random() * 4);
+        for (let i = 0; i < n; i++) ring(lp, at + i * rand(0.11, 0.2), f * rand(0.98, 1.02), RIM, level * rand(0.4, 0.8));
+        len += n * 0.2;
+      } else {
+        ring(lp, at, rand(1100, 1600), SAUCER, level * 0.9);
+        if (Math.random() < 0.5) ring(lp, at + rand(0.04, 0.09), rand(1100, 1600), SAUCER, level * 0.4);
+      }
+      window.setTimeout(() => pan.disconnect(), len * 1000 + 500);
+      window.setTimeout(event, rand(4, 13) * 1000);
+    };
+    window.setTimeout(event, rand(0.5, 2.5) * 1000);
   }
 
   private whenLoaded(id: ElementId) {
@@ -677,37 +843,108 @@ export class AudioEngine {
   }
 
 
-  /** Schedules one phrase of 2-4 chirps; returns its length in seconds. */
-  private chirpPhrase(ctx: AudioContext, dest: AudioNode, sources: SourceSet): number {
-    const chirp = (at: number, f0: number, f1: number, dur: number) => {
-      const osc = ctx.createOscillator();
-      const env = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(f0, at);
-      osc.frequency.exponentialRampToValueAtTime(f1, at + dur);
-      env.gain.setValueAtTime(0, at);
-      env.gain.linearRampToValueAtTime(1, at + 0.012);
-      env.gain.setTargetAtTime(0, at + dur * 0.55, dur * 0.25);
-      osc.connect(env).connect(dest);
-      osc.start(at);
-      osc.stop(at + dur + 0.12);
-      osc.addEventListener('ended', () => env.disconnect());
-      sources.add(osc);
-    };
+  /** One whistled syllable gliding through `[fraction, Hz]` points. */
+  private chirp(ctx: AudioContext, dest: AudioNode, sources: SourceSet, at: number, dur: number, curve: [number, number][]) {
+    const osc = ctx.createOscillator();
+    const env = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(curve[0][1], at);
+    for (const [u, f] of curve.slice(1)) osc.frequency.exponentialRampToValueAtTime(f, at + u * dur);
+    env.gain.setValueAtTime(0, at);
+    env.gain.linearRampToValueAtTime(1, at + Math.min(0.012, dur / 4));
+    env.gain.setValueAtTime(1, at + dur * 0.6);
+    env.gain.setTargetAtTime(0, at + dur * 0.6, dur * 0.15);
+    osc.connect(env).connect(dest);
+    osc.start(at);
+    osc.stop(at + dur + 0.1);
+    osc.addEventListener('ended', () => env.disconnect());
+    sources.add(osc);
+  }
 
-    const start = ctx.currentTime + 0.05;
-    const notes = 2 + Math.floor(Math.random() * 3);
-    const base = 2600 + Math.random() * 900;
-    let at = start;
-    for (let i = 0; i < notes; i++) {
-      const dur = 0.07 + Math.random() * 0.06;
-      const up = Math.random() < 0.6;
-      const f0 = base * (up ? 1 : 1.35) * (1 + (Math.random() - 0.5) * 0.1);
-      const f1 = base * (up ? 1.4 : 0.95);
-      chirp(at, f0, f1, dur);
-      at += dur + 0.06 + Math.random() * 0.09;
+  /** One song from one songbird starting at `start`; returns its length in seconds. */
+  private song(bird: Songbird, ctx: AudioContext, dest: AudioNode, sources: SourceSet, start: number): number {
+    const rand = (a: number, b: number) => a + Math.random() * (b - a);
+    const f = bird.pitch * rand(0.97, 1.03);
+    let at = 0;
+    const note = (dur: number, curve: [number, number][], gap: number) => {
+      this.chirp(ctx, dest, sources, start + at, dur, curve);
+      at += dur + gap;
+    };
+    switch (bird.song) {
+      case 'whistle': {
+        // Clear slurred notes, "fee-bee-bee": a high one, then a few lower.
+        const n = 2 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < n; i++) {
+          const p = i === 0 ? 1.25 : 0.95 - i * 0.03;
+          note(rand(0.26, 0.4), [[0, f * p * 1.04], [0.3, f * p], [1, f * p * 0.88]], rand(0.1, 0.22));
+        }
+        break;
+      }
+      case 'trill': {
+        // Quick even notes on one pitch that sinks a little, like a junco.
+        const n = 10 + Math.floor(Math.random() * 9);
+        const step = rand(0.055, 0.07);
+        for (let i = 0; i < n; i++) {
+          const g = f * (1.1 - (i / n) * 0.18);
+          note(step * 0.7, [[0, g * 1.18], [1, g * 0.85]], step * 0.3);
+        }
+        break;
+      }
+      case 'warble': {
+        // Quick varied syllables wandering up and down, ending in a down-slur, like a house finch.
+        const n = 7 + Math.floor(Math.random() * 7);
+        let p = 1;
+        for (let i = 0; i < n; i++) {
+          p = Math.min(1.45, Math.max(0.75, p * rand(0.8, 1.25)));
+          const curve: [number, number][] =
+            Math.random() < 0.5 ? [[0, f * p * 0.9], [1, f * p * 1.15]] : [[0, f * p * 1.15], [1, f * p * 0.88]];
+          note(rand(0.06, 0.14), curve, rand(0.025, 0.075));
+        }
+        note(0.24, [[0, f * 1.3], [1, f * 0.78]], 0);
+        break;
+      }
     }
-    return at - start + 0.2;
+    return at;
+  }
+
+  /**
+   * Many songbirds singing around the Glade, mostly at a distance: songs
+   * overlap loosely, each bird rarely twice in a row, and the perched bird
+   * sings once somewhere in the chorus. Tells the scene when the perched bird
+   * sings. Returns the chorus length in seconds.
+   */
+  private chorus(ctx: AudioContext, dest: AudioNode, sources: SourceSet): number {
+    const start = ctx.currentTime + 0.05;
+    const count = 6 + Math.floor(Math.random() * 6);
+    const perched = Math.floor(Math.random() * Math.min(3, count));
+    let at = 0;
+    let end = 0;
+    let last = -1;
+    for (let i = 0; i < count; i++) {
+      let v = i === perched ? 0 : 1 + Math.floor(Math.random() * (SONGBIRDS.length - 1));
+      if (v === last && v !== 0) v = 1 + (v % (SONGBIRDS.length - 1));
+      last = v;
+      const bird = SONGBIRDS[v];
+      const out = ctx.createGain();
+      out.gain.value = bird.level * (0.8 + Math.random() * 0.3);
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = bird.muffle;
+      const pan = ctx.createStereoPanner();
+      pan.pan.value = bird.pan;
+      out.connect(lp).connect(pan).connect(dest);
+      const len = this.song(bird, ctx, out, sources, start + at);
+      const delay = start + at - ctx.currentTime;
+      window.setTimeout(() => {
+        out.disconnect();
+        lp.disconnect();
+        pan.disconnect();
+      }, (delay + len) * 1000 + 500);
+      if (v === 0) this.onCall?.('bird', len * 1000, 0, delay * 1000);
+      end = Math.max(end, at + len);
+      at += Math.max(0.3, len * (0.3 + Math.random() * 0.9) + Math.random() * 0.6);
+    }
+    return end + 0.2;
   }
 
   /** One call from an animal, or a burst from a flock; returns its length in seconds. */
@@ -725,7 +962,7 @@ export class AudioEngine {
           ? this.coo(ctx, dest, sources)
           : id === 'owl'
             ? this.hoot(ctx, dest, sources)
-            : this.chirpPhrase(ctx, dest, sources);
+            : this.chorus(ctx, dest, sources);
     this.onCall?.(id, length * 1000);
     return length;
   }

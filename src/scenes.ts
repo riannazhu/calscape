@@ -22,8 +22,6 @@ interface Art {
 
 export interface SceneDef {
   id: SceneId;
-  /** Short name for the scene label. */
-  name: string;
   /** Full description for screen readers. */
   title: string;
   icon: Sprite;
@@ -51,7 +49,6 @@ const marina = (sprite: Sprite): Art => ({ sprite, palette: MARINA.day });
 export const SCENES: SceneDef[] = [
   {
     id: 'glade',
-    name: 'Glade',
     title: 'Glade facing Doe Library',
     icon: PINE,
     elements: [
@@ -84,16 +81,15 @@ export const SCENES: SceneDef[] = [
   },
   {
     id: 'strada',
-    name: 'Strada',
     title: 'Caffè Strada patio on Bancroft Way',
     icon: CUP,
     elements: [
-      { id: 'chatter', name: 'Café chatter', bar: { x: 258, y: 92, place: 'above' } },
-      { id: 'typing', name: 'Laptop typing', bar: { x: 154, y: 96, place: 'above' } },
-      { id: 'crickets', name: 'Crickets', bar: { x: 103, y: 135, place: 'above' } },
+      { id: 'chatter', name: 'Café chatter', bar: { x: 274, y: 95, place: 'above' } },
+      { id: 'typing', name: 'Laptop typing', bar: { x: 156, y: 96, place: 'above' } },
+      { id: 'crickets', name: 'Crickets', bar: { x: 207, y: 155, place: 'above' } },
       { id: 'rain', name: 'Rain', bar: { x: 150, y: 50, place: 'below' } },
-      { id: 'sparrow', name: 'House sparrow', bar: { x: 262, y: 142, place: 'above' } },
-      { id: 'crow', name: 'Crow', bar: { x: 131, y: 38, place: 'right' } },
+      { id: 'sparrow', name: 'House sparrow', bar: { x: 282, y: 122, place: 'above' } },
+      { id: 'crow', name: 'Crow', bar: { x: 139, y: 52, place: 'right' } },
     ],
     inventory: {
       day: ['rain', 'chatter', 'sparrow', 'typing'],
@@ -108,12 +104,11 @@ export const SCENES: SceneDef[] = [
       crow: strada(CROW.idle),
       crickets: strada(STRADA_CRICKET[0]),
     },
-    edges: edges(STRADA, 'sky0', 'brick'),
+    edges: edges(STRADA, 'edgeTop', 'edgeBottom'),
     create: (ids) => new Strada(ids),
   },
   {
     id: 'marina',
-    name: 'Marina',
     title: 'Berkeley Marina shore facing the Golden Gate',
     icon: BOAT,
     elements: [

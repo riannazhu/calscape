@@ -206,7 +206,8 @@ export class Glade extends Stage<GladeKey> {
           });
           break;
         case 'bird': {
-          const frames = this.calling(id, now) && blip(140) ? BIRD_FRAMES.sing : BIRD_FRAMES.idle;
+          // The perched bird is the nearest of the singers; the rest are heard from the trees around.
+          const frames = this.voiceCalling(id, 0, now) && blip(140) ? BIRD_FRAMES.sing : BIRD_FRAMES.idle;
           at(id, frames[this.birdFacing], BIRD_POS, this.sway(t), now < this.birdHopUntil ? -1 : 0);
           break;
         }

@@ -33,7 +33,7 @@ export interface SceneStage {
   time: TimeOfDay;
   reducedMotion: boolean;
   highlight: ElementId | null;
-  call(id: ElementId, ms: number): void;
+  call(id: ElementId, ms: number, voice?: number, delayMs?: number): void;
   bounds(id: ElementId): { x: number; y: number; w: number; h: number };
   hitTest(lx: number, ly: number): ElementId | null;
   render(ctx: CanvasRenderingContext2D, now: number): void;
@@ -54,6 +54,7 @@ export abstract class Stage<K extends string> implements SceneStage {
   /** Large targets that need no extra margin around their silhouette. */
   protected unpadded = new Set<ElementId>();
   private callUntil: Partial<Record<ElementId, number>> = {};
+  private voiceCalls: Partial<Record<ElementId, { voice: number; from: number; to: number }[]>> = {};
 
   /** `elements` is the scene's stacking order, bottom first; hit-testing walks it from the top. */
   constructor(elements: ElementId[]) {
@@ -70,13 +71,25 @@ export abstract class Stage<K extends string> implements SceneStage {
     return x < 0 || y < 0 || x >= W || y >= H;
   }
 
-  /** An element is calling for the next `ms`: the bird sings, the owl hoots, and so on. */
-  call(id: ElementId, ms: number) {
-    this.callUntil[id] = Math.max(this.callUntil[id] ?? 0, performance.now() + ms);
+  /**
+   * An element calls for `ms`, starting `delayMs` from now: the bird sings,
+   * the owl hoots, and so on. `voice` names which animal of a group it is.
+   */
+  call(id: ElementId, ms: number, voice?: number, delayMs = 0) {
+    const from = performance.now() + delayMs;
+    this.callUntil[id] = Math.max(this.callUntil[id] ?? 0, from + ms);
+    if (voice === undefined) return;
+    const live = (this.voiceCalls[id] ?? []).filter((c) => c.to > performance.now());
+    this.voiceCalls[id] = [...live, { voice, from, to: from + ms }];
   }
 
   protected calling(id: ElementId, now: number) {
     return now < (this.callUntil[id] ?? 0);
+  }
+
+  /** Whether one animal of a group is calling right now. */
+  protected voiceCalling(id: ElementId, voice: number, now: number) {
+    return (this.voiceCalls[id] ?? []).some((c) => c.voice === voice && now >= c.from && now < c.to);
   }
 
   /** Resting bounds of an element, used to place keyboard focus targets. */

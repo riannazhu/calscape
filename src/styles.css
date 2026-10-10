@@ -146,10 +146,6 @@ body {
   pointer-events: auto;
 }
 
-.scenes > span {
-  min-width: calc(var(--u) * 31);
-}
-
 .scene-pick {
   appearance: none;
   margin: 0;

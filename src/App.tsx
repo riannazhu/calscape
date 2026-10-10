@@ -70,7 +70,7 @@ export function App() {
     [engine, state.master, state.masterMuted],
   );
   useEffect(() => {
-    engine.onCall = (id, ms) => world.call(id, ms);
+    engine.onCall = (id, ms, voice, delayMs) => world.call(id, ms, voice, delayMs);
   }, [engine, world]);
 
   useEffect(() => {
@@ -269,7 +269,6 @@ export function App() {
           <span className="brand">CalScape</span>
         </div>
         <div className="chrome panel corner top-right scenes" role="group" aria-label="Scene">
-          <span>{scene.name}</span>
           {SCENES.map((s) => (
             <button
               key={s.id}

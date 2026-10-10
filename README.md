@@ -14,8 +14,7 @@ switch between them.
 
 ## The Glade
 
-The Glade faces Doe Library, with the Campanile behind it on the left. It has
-three times of day, each with its own people, light and four ambient elements.
+The lawn facing Doe Library, with the Campanile behind it on the left.
 
 | Day | Sunset |
 | --- | --- |
@@ -29,22 +28,15 @@ three times of day, each with its own people, light and four ambient elements.
 | Sunset | Rain, Campanile bell, mourning dove, breeze |
 | Night | Rain, Campanile bell, owl, crickets |
 
-The third slot is always that time's bird. Rain turns the sky overcast in that
-time of day's own cloud colours and hides the sun, moon and stars.
-
 ## Caffè Strada
 
-The brick patio of Caffè Strada at College and Bancroft, under a full canopy
-of plum trees and string lights: the café's lit arched loggia, two patio
-heaters, white balustrades, and a street lamp with a Cal banner, with a campus
-hall and trees beyond. Nearly every table is taken: two students work on
-laptops, others sit over coffee at the back, and three friends talk at the
-table on the right. Cyclists ride along the path past the railing now and then; they
-are only scenery and make no sound.
+The patio of Caffè Strada at College and Bancroft, under the plum trees and
+string lights, with a Cal banner on the street lamp and the campus plaza
+beyond.
 
 | Day | Sunset | Night |
 | --- | --- | --- |
-| ![Day: friends talking at the right-hand table, two students on laptops, sparrows on the front railing](docs/screenshots/strada-day.png) | ![Sunset: pink sky, string lights on, a crow on the bannered lamp](docs/screenshots/strada-sunset.png) | ![Night: the lamp, heaters and string lights glowing, a cricket by the big plum's tree well](docs/screenshots/strada-night.png) |
+| ![Day: blue sky through the plum trees, the couple talking behind the right-hand railing, the man typing at the centre table, sparrows on the front railing](docs/screenshots/strada-day.png) | ![Sunset: peach-and-lilac sky with the sun through the arch, string lights on, a crow on the bannered lamp](docs/screenshots/strada-sunset.png) | ![Night: navy sky with stars, the lamp, heaters and string lights glowing](docs/screenshots/strada-night.png) |
 
 | Time | Elements |
 | --- | --- |
@@ -52,19 +44,10 @@ are only scenery and make no sound.
 | Sunset | Rain, café chatter, crow, laptop typing |
 | Night | Rain, café chatter, crickets, laptop typing |
 
-The chatter is a real café recording, so the clink of cups and spoons is part
-of it rather than a separate element. The typing is several keyboards at once,
-kept well below the chatter. By day three sparrows hop along the front
-railing; at sunset two crows, one on the lamp and one in the big plum, stand in
-for Berkeley's evening crow flights; at night a cricket chirps by the big plum's
-tree well.
-
 ## Berkeley Marina
 
-The grassy shore beside the Berkeley Marina pier, looking west
-across the bay to San Francisco and the Golden Gate Bridge. People fish from
-the pier, sailboats sway at anchor on the swell, and sea lions haul out on a
-float.
+The grassy shore beside the Berkeley Marina pier, looking west across the bay
+to San Francisco and the Golden Gate Bridge.
 
 | Day | Sunset | Night |
 | --- | --- | --- |
@@ -76,16 +59,6 @@ float.
 | Sunset | Waves, foghorn, Canada geese, sea lions |
 | Night | Waves, foghorn, black-crowned night heron, sea lions |
 
-The waves are surf breaking along the rocks. The foghorn is a ferry heading
-out past the low fog bank under the Marin Headlands, sounding every one to two
-minutes. The people fishing are scenery only.
-
-The sea lions bark in runs, the way the Pier 39 colony does.
-
-Animals that live in groups are heard as groups: the gulls, geese, sea lions,
-sparrows and crows each call in bursts from several individuals, each with its
-own pitch, loudness and place in the stereo field, sometimes overlapping.
-
 ## Running
 
 ```sh
@@ -96,7 +69,7 @@ npm run build    # static build in dist/, no backend needed
 
 ## Using it
 
-- **Top right:** the scene's name and three scene icons: a pine for the Glade,
+- **Top right:** three scene icons: a pine for the Glade,
   a coffee cup for Caffè Strada and a sailboat for the Marina. Each scene keeps
   its own elements, mute and volume while you're elsewhere. Switching fades
   out the old scene's sounds; rain and crickets carry on without restarting
@@ -105,7 +78,8 @@ npm run build    # static build in dist/, no backend needed
   time of day. Click a tile to add that element to the scene; click it again
   to remove it. Tiles for elements in the scene are outlined in blue.
 - **Scene objects:** hover a sprite to outline it and show its control bar
-  (mute, volume down, level, volume up, remove). Changing the volume plays a
+  (mute, volume down, eight-step level, volume up, remove). Elements start at
+  the middle step and go up to twice that. Changing the volume plays a
   short sample at the new level. Click to pin the bar; click elsewhere or press
   Escape to close it. On touch, tap the sprite.
 - **Keyboard:** Tab to a sprite, press Enter to open its controls.
@@ -126,9 +100,17 @@ times at noon and midnight, with strikes 4 seconds apart.
 
 Every sound is kept ambient: quiet defaults, even beds and rare calls.
 
-Rain, breeze, crickets, the songbird and the squirrel are synthesised in the
+Rain, breeze, crickets, the songbirds and the squirrel are synthesised in the
 browser by `src/audio/engine.ts`. The cricket chorus is periodic like a real
 field: a few nearby crickets chirp on steady beats over fainter distant ones.
+One scrub jay sits on the branch, but the songbird sound is a loose,
+background chorus of about six birds around the Glade, each with its own song
+(a warble, a trill or slurred whistles) and stereo position. Most are
+distant, so they're quieter and softer; the perched bird is the nearest and
+sings once per chorus.
+
+Every element starts at four of eight bars. Each sound's full gain is tuned
+so four bars sits at a comfortable ambient level for it.
 
 The bell, `src/audio/sounds/campanile.mp3`, is a single strike isolated from a
 recording of the Campanile: only the bell's partials are kept, so traffic and
@@ -152,7 +134,8 @@ between notes are silent. The adapted clips are shared under the same
 licenses as their sources. The dove and owl fall back to synthesised calls if
 their files fail to load.
 
-The Caffè Strada and Marina sounds are all recordings, cleaned the same way:
+The Caffè Strada and Marina sounds are recordings (apart from the
+synthesised cup clinks over the café chatter), cleaned the same way:
 band-limited to the useful range, with steady background noise gated out,
 trimmed to single calls, levelled, and faded in and out. Loops have their end
 crossfaded into their start so they repeat without a seam. These elements
@@ -176,7 +159,7 @@ licenses as their sources.
 
 ## Layout
 
-- `src/scenes.ts` — the scene registry: each scene's name, elements and their
+- `src/scenes.ts` — the scene registry: each scene's elements and their
   control-bar anchors, inventory per time of day, tile art and page colours.
 - `src/scene/glade/`, `src/scene/strada/`, `src/scene/marina/` — one folder per
   scene: its palette, sprites, backdrop layers and the `Stage` subclass that
