@@ -1,14 +1,6 @@
 # CalScape
 
-A Berkeley-themed pixel art world with ambient sounds for studying.
-
-Put it on the TV, pick a spot around Berkeley, add rain, a bird or the
-Campanile bell, and let it run in the background. Every sound belongs to
-something you can see in the scene.
-
-There are three scenes: the Glade facing Doe Library, the patio of Caffè
-Strada, and the shore at the Berkeley Marina. The icons in the top-right label
-switch between them.
+A Berkeley-themed ambient soundscape for studying, because I love background noise but can't focus with music with lyrics. Scenes include the Glade facing Doe, Strada's patio, and the shore at Berkeley Marina.
 
 ![The Glade at night with the controls showing: the Campanile is outlined with its control bar open](docs/screenshots/interface.png)
 
